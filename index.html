@@ -54,14 +54,14 @@
       <div class="dropzones">
         <div class="dropzone" data-side="A">
           <p>PNG de design (depuis Figma)</p>
-          <button type="button" class="btn secondary pick">Choisir un fichier…</button>
+          <button type="button" class="btn secondary pick">Choisir une image</button>
           <small class="fname"></small>
           <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" />
           <img alt="Aperçu image A" />
         </div>
         <div class="dropzone" data-side="B">
           <p>Capture d’écran PNG/JPG</p>
-          <button type="button" class="btn secondary pick">Choisir un fichier…</button>
+          <button type="button" class="btn secondary pick">Choisir une image</button>
           <small class="fname"></small>
           <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" />
           <img alt="Aperçu image B" />
@@ -132,7 +132,7 @@ const handle=d.createElement('div');handle.className='visdiff-handle visdiff-hid
 // Crop layer (for area selection)
 const cropLayer=d.createElement('div');cropLayer.className='visdiff-crop-layer visdiff-hidden';const cropRect=d.createElement('div');cropRect.className='visdiff-crop-rect';cropLayer.appendChild(cropRect);root.appendChild(cropLayer);
 const panel=d.createElement('div');panel.className='visdiff-panel visdiff-hidden';panel.innerHTML=`<h3>Superposition visuelle</h3>
-<div class=\"visdiff-row\"><button id=\"vdpick\" class=\"visdiff-btn\" type=\"button\">Choisir une image…</button><small id=\"vdfname\" style=\"color:var(--ov-muted)\"></small><input type=\"file\" accept=\"image/*\" id=\"vdupload\" aria-label=\"Importer une image\" style=\"display:none\"></div>
+<div class=\"visdiff-row\"><button id=\"vdpick\" class=\"visdiff-btn\" type=\"button\">Choisir une image</button><small id=\"vdfname\" style=\"color:var(--ov-muted)\"></small><input type=\"file\" accept=\"image/*\" id=\"vdupload\" aria-label=\"Importer une image\" style=\"display:none\"></div>
 <div class=\"visdiff-row\"><label>Opacité</label><input type=\"range\" id=\"vdopacity\" min=\"0\" max=\"100\" value=\"60\"><span id=\"vdopval\">60%</span><label>Échelle</label><input type=\"range\" id=\"vdscale\" min=\"10\" max=\"400\" value=\"100\"><span id=\"vdscval\">100%</span></div>
 <div class=\"visdiff-row\"><label>X</label><input type=\"number\" id=\"vdx\" value=\"0\" style=\"width:80px\"><label>Y</label><input type=\"number\" id=\"vdy\" value=\"0\" style=\"width:80px\"></div>
 <div class=\"visdiff-row\"><label>Fusion</label><select id=\"vdblend\"><option value=\"normal\">normal</option><option value=\"multiply\">multiply</option><option value=\"screen\">screen</option><option value=\"overlay\">overlay</option><option value=\"darken\">darken</option><option value=\"lighten\">lighten</option><option value=\"difference\">difference</option><option value=\"color-dodge\">color-dodge</option><option value=\"color-burn\">color-burn</option><option value=\"hard-light\">hard-light</option><option value=\"soft-light\">soft-light</option></select></div>
@@ -359,7 +359,7 @@ window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
         const input = dz.querySelector('input[type=file]');
         const fname = dz.querySelector('.fname');
         if(pick && input){
-          pick.addEventListener('click',()=>input.click());
+          pick.addEventListener('click',()=>{ try{ input.value=''; }catch(_){} input.click(); });
           input.addEventListener('change',()=>{ fname.textContent = input.files && input.files[0] ? input.files[0].name : ''; });
         }
       });
