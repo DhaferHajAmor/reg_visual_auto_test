@@ -21,6 +21,7 @@
         <button id="demoHere" class="btn secondary" type="button">Essayer ici (démo)</button>
         <label class="sr-only" for="themeSelect">Thème</label>
         <select id="themeSelect" class="btn secondary" title="Choisir un thème">
+          <option value="auto">Auto (système)</option>
           <option value="dark">Sombre</option>
           <option value="light">Clair</option>
           <option value="desjardins">Desjardins</option>
@@ -148,7 +149,10 @@ const panel=d.createElement('div');panel.className='visdiff-panel visdiff-hidden
 root.appendChild(panel);d.documentElement.appendChild(root);
 const reopen=document.createElement('button');reopen.className='visdiff-reopen visdiff-hidden';reopen.textContent='Afficher le panneau';root.appendChild(reopen);
 // Theme variables applied to overlay root based on persisted theme
-const themeKey='VD::theme';let th='desjardins';try{const t=localStorage.getItem(themeKey);if(t)th=t}catch(_){}
+const themeKey='VD::theme';let th='desjardins';try{const t=localStorage.getItem(themeKey);if(t)th=t}catch(_){ }
+if(th==='auto'){
+  try{ th = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }catch(_){ th='dark'; }
+}
 const palettes={
   dark:{panel:'#191c2f',text:'#f2f4ff',border:'#2a2f4a',muted:'#a7acc6',btn:'#222741',btnBorder:'#2a2f4a',btnText:'#f2f4ff',reopenBg:'#2a335a',reopenBorder:'#3a4474',accent:'#7aa2ff',knobBorder:'#0b0e1a',dangerBg:'#2b0f1a',dangerBorder:'#4a2030'},
   light:{panel:'#ffffff',text:'#0b0e1a',border:'#e2e5ee',muted:'#5a607a',btn:'#eef1fd',btnBorder:'#d9e0fb',btnText:'#182046',reopenBg:'#eef1fd',reopenBorder:'#d9e0fb',accent:'#355bd6',knobBorder:'#e6e9ee',dangerBg:'#fde8ee',dangerBorder:'#f5b3c7'},
@@ -323,9 +327,15 @@ window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
       const key = 'VD::theme';
       const sel = document.getElementById('themeSelect');
       const root = document.documentElement;
+      const mql = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
       function applyTheme(t){
-        if(t==='light'){ root.setAttribute('data-theme','light'); }
-        else if(t==='desjardins'){ root.setAttribute('data-theme','desjardins'); }
+        let applied = t;
+        if(t==='auto'){
+          const isDark = mql && mql.matches;
+          applied = isDark ? 'dark' : 'light';
+        }
+        if(applied==='light'){ root.setAttribute('data-theme','light'); }
+        else if(applied==='desjardins'){ root.setAttribute('data-theme','desjardins'); }
         else { root.removeAttribute('data-theme'); }
         if(sel){ sel.value = t || 'dark'; }
       }
@@ -333,6 +343,7 @@ window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
       // Default to Desjardins if none set, per request
       const initial = saved || 'desjardins';
       applyTheme(initial);
+      if(mql){ mql.addEventListener('change', ()=>{ const t = (sel && sel.value) || initial; if(t==='auto'){ applyTheme('auto'); } }); }
       if(sel){ sel.addEventListener('change', ()=>{ const t = sel.value; applyTheme(t); try{ localStorage.setItem(key, t); }catch(_){} }); }
     })();
 
