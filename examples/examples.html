@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Exemples pour comparaison image ↔ image</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:20px; color:#0b0e1a}
+  .grid{display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+  .card{border:1px solid #e2e5ee; border-radius:10px; padding:12px}
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .imgs{display:flex; gap:8px; align-items:flex-start}
+  img{width:300px; height:180px; object-fit:contain; background:#fff; border:1px solid #e2e5ee; border-radius:8px}
+  button{background:#eef1fd; border:1px solid #d9e0fb; color:#182046; padding:6px 10px; border-radius:8px; cursor:pointer}
+  small{color:#5a607a}
+</style>
+</head>
+<body>
+<h1>Exemples image ↔ image</h1>
+<p>Clique sur “Télécharger” pour obtenir A et B, puis compare-les dans l’outil.</p>
+
+<div class="grid" id="grid"></div>
+
+<script>
+(function(){
+  const W=600, H=360;
+  function mkCanvas(){ const c=document.createElement('canvas'); c.width=W; c.height=H; return c; }
+  function bg(ctx){ ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H); }
+
+  function download(name, url){
+    const a=document.createElement('a'); a.href=url; a.download=name; a.click();
+  }
+  function toImg(canvas){ const img=new Image(); img.src=canvas.toDataURL('image/png'); return img; }
+
+  // Générateurs de paires
+  const gens = [
+    {
+      id:'decalage',
+      label:'Décalage 1px',
+      note:'Même carré, B décalé de 1px vers la droite.',
+      gen:()=>{
+        const A=mkCanvas(), B=mkCanvas(); const a=A.getContext('2d'), b=B.getContext('2d'); bg(a); bg(b);
+        a.fillStyle='#355bd6'; a.fillRect(200,140,140,140);
+        b.fillStyle='#355bd6'; b.fillRect(201,140,140,140); // +1px X
+        return {A,B};
+      }
+    },
+    {
+      id:'couleur',
+      label:'Couleurs proches',
+      note:'Barre verte: teinte légèrement différente.',
+      gen:()=>{
+        const A=mkCanvas(), B=mkCanvas(); const a=A.getContext('2d'), b=B.getContext('2d'); bg(a); bg(b);
+        a.fillStyle='#e9edf7'; a.fillRect(60,60,480,80);
+        a.fillStyle='#25a05a'; a.fillRect(60,180,480,60);
+        b.fillStyle='#e9edf7'; b.fillRect(60,60,480,80);
+        b.fillStyle='#2fb268'; b.fillRect(60,180,480,60); // proche mais différent
+        return {A,B};
+      }
+    },
+    {
+      id:'texte',
+      label:'Texte (AA)',
+      note:'B décalé de 0.5px pour accentuer l’anticrénelage.',
+      gen:()=>{
+        const A=mkCanvas(), B=mkCanvas(); const a=A.getContext('2d'), b=B.getContext('2d'); bg(a); bg(b);
+        a.fillStyle='#0b0e1a'; a.font='48px Segoe UI, system-ui, sans-serif'; a.fillText('Interface', 80, 140);
+        a.font='24px Segoe UI, system-ui, sans-serif'; a.fillStyle='#5a607a'; a.fillText('Texte net', 80, 190);
+        b.fillStyle='#0b0e1a'; b.font='48px Segoe UI, system-ui, sans-serif'; b.translate(0.5,0.5); b.fillText('Interface', 80, 140);
+        b.font='24px Segoe UI, system-ui, sans-serif'; b.fillStyle='#5a607a'; b.fillText('Texte net', 80, 190);
+        return {A,B};
+      }
+    },
+    {
+      id:'transparence',
+      label:'Transparence',
+      note:'B ajoute un disque semi‑transparent.',
+      gen:()=>{
+        const A=mkCanvas(), B=mkCanvas(); const a=A.getContext('2d'), b=B.getContext('2d'); bg(a); bg(b);
+        // damier doux pour voir l’alpha
+        function grid(ctx){ ctx.fillStyle='#f3f5fb'; for(let y=0;y<H;y+=20){ for(let x=0;x<W;x+=20){ if(((x+y)/20)%2===0) ctx.fillRect(x,y,20,20); } } }
+        grid(a); grid(b);
+        a.fillStyle='#355bd6'; a.fillRect(100,220,180,80);
+        b.fillStyle='#355bd6'; b.fillRect(100,220,180,80);
+        b.fillStyle='rgba(255,0,85,0.35)'; b.beginPath(); b.arc(380,240,70,0,Math.PI*2); b.fill();
+        return {A,B};
+      }
+    },
+    {
+      id:'trait',
+      label:'Épaisseur de trait',
+      note:'Cadres 1px vs 2px, et fine ligne horizontale.',
+      gen:()=>{
+        const A=mkCanvas(), B=mkCanvas(); const a=A.getContext('2d'), b=B.getContext('2d'); bg(a); bg(b);
+        a.strokeStyle='#182046'; a.lineWidth=1; a.strokeRect(140,80,160,110); a.beginPath(); a.moveTo(80,300); a.lineTo(520,300); a.stroke();
+        b.strokeStyle='#182046'; b.lineWidth=2; b.strokeRect(140,80,160,110); b.beginPath(); b.moveTo(80,300); b.lineTo(520,300); b.stroke();
+        return {A,B};
+      }
+    }
+  ];
+
+  // Build UI
+  const grid = document.getElementById('grid');
+  gens.forEach(({id,label,note,gen})=>{
+    const {A,B} = gen();
+    const card = document.createElement('div'); card.className='card';
+    const h = document.createElement('h3'); h.textContent = label; card.appendChild(h);
+    const sm = document.createElement('small'); sm.textContent = note; card.appendChild(sm);
+    const imgs = document.createElement('div'); imgs.className='imgs';
+    const imgA = toImg(A), imgB = toImg(B); imgs.appendChild(imgA); imgs.appendChild(imgB); card.appendChild(imgs);
+    const row = document.createElement('div'); row.className='row';
+    const b1 = document.createElement('button'); b1.textContent='Télécharger A'; b1.onclick=()=>download(`${id}-A.png`, A.toDataURL('image/png'));
+    const b2 = document.createElement('button'); b2.textContent='Télécharger B'; b2.onclick=()=>download(`${id}-B.png`, B.toDataURL('image/png'));
+    const b3 = document.createElement('button'); b3.textContent='Télécharger les 2'; b3.onclick=()=>{ b1.onclick(); setTimeout(()=>b2.onclick(), 200); };
+    row.appendChild(b1); row.appendChild(b2); row.appendChild(b3); card.appendChild(row);
+    grid.appendChild(card);
+  });
+})();
+</script>
+</body>
+</html>

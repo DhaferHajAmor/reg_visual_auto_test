@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Visual Diff — Zéro‑installation</title>
+  <link rel="stylesheet" href="styles.css" />
+  <meta name="description" content="Superposez un PNG Figma sur n’importe quel site via un bookmarklet, ou comparez deux images avec un diff pixel. Aucune installation." />
+  <link rel="icon" href="data:," />
+  <script defer src="scripts/image-diff.js"></script>
+</head>
+<body>
+  <header class="container">
+    <h1>Visual Diff</h1>
+    <p class="subtitle">Comparaison visuelle sans installation pour pages et images.</p>
+    <div class="hero">
+      <p>Glissez le bookmarklet, puis comparez votre PNG Figma avec n’importe quelle page web. Ou utilisez le diff d’images intégré.</p>
+      <div class="cta-row">
+        <a id="bookmarkletLinkTop" class="btn" href="#">Superposition en direct</a>
+        <button id="copyBookmarklet" class="btn secondary" type="button">Copier le bookmarklet</button>
+        <button id="demoHere" class="btn secondary" type="button">Essayer ici (démo)</button>
+        <label class="sr-only" for="themeSelect">Thème</label>
+        <select id="themeSelect" class="btn secondary" title="Choisir un thème">
+          <option value="dark">Sombre</option>
+          <option value="light">Clair</option>
+          <option value="desjardins">Desjardins</option>
+        </select>
+      </div>
+    </div>
+  </header>  
+
+  <main class="container">
+    <nav class="tabs" role="tablist" aria-label="Modes">
+  <button class="tab active" data-tab="bookmarklet" role="tab" aria-selected="true">Superposition (Bookmarklet)</button>
+  <button class="tab" data-tab="image-diff" role="tab" aria-selected="false">Image ↔ Image</button>
+    </nav>
+
+    <section id="bookmarklet" class="tabpanel active" role="tabpanel">
+      <h2>Superposition en direct (Bookmarklet)</h2>
+      <ol>
+  <li>Glissez ceci dans votre barre de favoris : <a id="bookmarkletLink" href="#">Superposition en direct</a></li>
+        <li>Visitez n’importe quelle page et cliquez sur le bookmarklet.</li>
+        <li>Importez votre PNG Figma et alignez‑le à l’aide des contrôles.</li>
+      </ol>
+      <details>
+        <summary>À quoi ça sert ?</summary>
+        <p>Il injecte une petite interface dans la page (entièrement côté navigateur). Vous pouvez positionner, mettre à l’échelle et changer le mode de fusion de votre PNG pour comparer le design et le rendu.</p>
+      </details>
+      <div class="tip">Astuce : flèches pour déplacer (Maj = 10 px), +/- pour l’échelle, D pour le mode difference, Échap pour fermer.</div>
+    </section>
+
+    <section id="image-diff" class="tabpanel" role="tabpanel" aria-hidden="true">
+      <h2>Comparaison Image ↔ Image (Diff pixel)</h2>
+      <div class="dropzones">
+        <div class="dropzone" data-side="A">
+          <p>PNG de design (depuis Figma)</p>
+          <button type="button" class="btn secondary pick">Choisir un fichier…</button>
+          <small class="fname"></small>
+          <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" />
+          <img alt="Aperçu image A" />
+        </div>
+        <div class="dropzone" data-side="B">
+          <p>Capture d’écran PNG/JPG</p>
+          <button type="button" class="btn secondary pick">Choisir un fichier…</button>
+          <small class="fname"></small>
+          <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" />
+          <img alt="Aperçu image B" />
+        </div>
+      </div>
+      <div class="controls-row">
+  <label>Mode <select id="diffMode"><option value="pixel">Pixel (rapide)</option><option value="ssim">SSIM (perceptuel)</option></select> <span class="help" title="SSIM: mesure de similarité structurelle (plus proche de la perception humaine)">i</span></label>
+  <label><span id="thresholdLabelText">Seuil</span> <input id="threshold" type="range" min="0" max="100" value="8" /> <span id="thresholdVal">8%</span></label>
+  <label>Couleur de surbrillance <input id="diffColor" type="color" value="#ff0055" /></label>
+  <label><input type="checkbox" id="lumaOnly" /> Luminance seule <span class="help" aria-label="Aide" title="Compare uniquement la luminosité (Y). Réduit les écarts de teinte mineurs, utile pour le texte.">i</span></label>
+  <label><input type="checkbox" id="blur1" /> Lisser (1 px) <span class="help" aria-label="Aide" title="Applique un léger flou (1 px) avant la comparaison pour atténuer l’anticrénelage.">i</span></label>
+  <label><input type="checkbox" id="edgeTol" /> Tolérance bords (AA) <span class="help" aria-label="Aide" title="Augmente la tolérance près des bords forts (anticrénelage) pour réduire les faux positifs.">i</span></label>
+        <button id="runDiff">Lancer le diff</button>
+        <button id="swapImages">Inverser</button>
+        <button id="clearImages">Effacer</button>
+        <button id="maskToggle" class="btn secondary" type="button">Ignorer une zone</button>
+        <button id="maskClear" class="btn secondary" type="button">Effacer zones ignorées</button>
+  <button id="resetPrefs" class="btn secondary" type="button">Réinitialiser préférences</button>
+        <button id="downloadDiff" class="btn secondary" type="button">Télécharger le diff</button>
+      </div>
+      <div id="diffContainer" class="diff-wrap">
+        <canvas id="diffCanvas" class="canvas" aria-label="Résultat du diff"></canvas>
+        <canvas id="maskCanvas" class="mask-canvas" aria-label="Masques de zones ignorées"></canvas>
+      </div>
+  <div class="tip">Déposez deux images ou utilisez les sélecteurs. L’aperçu sous chaque zone montre l’image chargée. Utilisez « Ignorer une zone » pour dessiner un rectangle exclu de la comparaison. Le diff met en évidence les pixels qui diffèrent au‑delà du seuil choisi.</div>
+  <div class="tip"><strong>Conseils</strong> : Texte fin → Luminance + Lisser (1 px) + seuil 8–15%. Icônes/solides → Mode Pixel, tolérance bords off, seuil bas. Visuel global → Mode SSIM.</div>
+    </section>
+  </main>
+
+  <footer class="container small">
+  <p>Tout se passe dans votre navigateur. Aucune donnée n’est envoyée.</p>
+  </footer>
+
+  <script id="visdiff-bookmarklet-code" type="text/plain">
+(()=>{if(window.__VIS_DIFF__&&window.__VIS_DIFF__.open){window.__VIS_DIFF__.open();return}const d=document;const st=d.createElement('style');st.textContent=`
+.visdiff-overlay-root{position:fixed;inset:0;pointer-events:none;z-index:2147483647}
+.visdiff-panel{position:fixed;top:16px;right:16px;background:var(--ov-panel);color:var(--ov-text);border:1px solid var(--ov-border);border-radius:10px;padding:10px;min-width:320px;pointer-events:auto;box-shadow:0 6px 24px rgba(0,0,0,.35);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
+.visdiff-panel h3{margin:0 0 8px 0;font-size:16px}
+.visdiff-row{display:flex;gap:8px;align-items:center;margin:6px 0;flex-wrap:wrap}
+.visdiff-row label{font-size:12px;color:var(--ov-muted)}
+.visdiff-row input[type=range]{width:120px;margin:0}
+.visdiff-row label{display:flex;align-items:center;gap:4px}
+.visdiff-row input[type=number]{padding:2px 4px}
+.visdiff-row select{height:28px}
+.visdiff-buttons{display:flex;gap:8px;flex-wrap:wrap}
+.visdiff-help{display:inline-block;width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;background:var(--ov-btn);border:1px solid var(--ov-btn-border);color:var(--ov-text);font-size:11px;margin-left:6px;cursor:help}
+.visdiff-btn{background:var(--ov-btn);border:1px solid var(--ov-btn-border);color:var(--ov-btn-text);padding:6px 10px;border-radius:8px;cursor:pointer}
+.visdiff-btn.danger{border-color:var(--ov-danger-border);background:var(--ov-danger-bg);color:#ffc8d7}
+.visdiff-stage{position:fixed;inset:0;pointer-events:none}
+.visdiff-floating{position:absolute;left:0;top:0;transform-origin:top left;pointer-events:auto;cursor:move}
+.visdiff-floating img{display:block;max-width:none}
+.visdiff-hidden{display:none !important}
+.visdiff-grid{position:fixed;inset:0;pointer-events:none;--s:8px;--o:.2;--c:var(--ov-grid-rgba, rgba(122,162,255,.6));background-image:repeating-linear-gradient(0deg,var(--c) 0 1px,transparent 1px,var(--s)),repeating-linear-gradient(90deg,var(--c) 0 1px,transparent 1px,var(--s));opacity:var(--o)}
+.visdiff-loupe{position:fixed;width:160px;height:160px;border:2px solid var(--ov-accent);border-radius:50%;overflow:hidden;pointer-events:none;box-shadow:0 4px 18px rgba(0,0,0,.4);z-index:2147483647}
+.visdiff-loupe img{position:absolute;transform-origin:top left;image-rendering:pixelated}
+.visdiff-handle{position:fixed;top:0;bottom:0;width:2px;background:var(--ov-accent);box-shadow:0 0 0 1px color-mix(in srgb, var(--ov-accent) 30%, transparent);cursor:ew-resize;pointer-events:auto}
+.visdiff-knob{position:absolute;top:50%;left:-8px;width:18px;height:18px;border-radius:50%;background:var(--ov-accent);border:2px solid var(--ov-knob-border);transform:translateY(-50%)}
+.visdiff-reopen{position:fixed;top:16px;right:16px;background:var(--ov-reopen-bg);border:1px solid var(--ov-reopen-border);color:var(--ov-text);border-radius:999px;padding:6px 10px;pointer-events:auto;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.35);}
+.visdiff-crop-layer{position:fixed;inset:0;cursor:crosshair;pointer-events:auto;background:rgba(0,0,0,.25);z-index:2147483646}
+.visdiff-crop-rect{position:absolute;border:2px dashed var(--ov-accent);background:rgba(0,135,62,.12)}
+`;d.documentElement.appendChild(st);
+const root=d.createElement('div');root.className='visdiff-overlay-root visdiff-hidden';
+const stage=d.createElement('div');stage.className='visdiff-stage';root.appendChild(stage);
+const grid=d.createElement('div');grid.className='visdiff-grid visdiff-hidden';stage.appendChild(grid);
+const float=d.createElement('div');float.className='visdiff-floating';const img=d.createElement('img');img.alt='Overlay';float.appendChild(img);stage.appendChild(float);
+const loupe=d.createElement('div');loupe.className='visdiff-loupe visdiff-hidden';const lImg=d.createElement('img');loupe.appendChild(lImg);stage.appendChild(loupe);
+const handle=d.createElement('div');handle.className='visdiff-handle visdiff-hidden';const knob=d.createElement('div');knob.className='visdiff-knob';handle.appendChild(knob);stage.appendChild(handle);
+// Crop layer (for area selection)
+const cropLayer=d.createElement('div');cropLayer.className='visdiff-crop-layer visdiff-hidden';const cropRect=d.createElement('div');cropRect.className='visdiff-crop-rect';cropLayer.appendChild(cropRect);root.appendChild(cropLayer);
+const panel=d.createElement('div');panel.className='visdiff-panel visdiff-hidden';panel.innerHTML=`<h3>Superposition visuelle</h3>
+<div class=\"visdiff-row\"><button id=\"vdpick\" class=\"visdiff-btn\" type=\"button\">Choisir une image…</button><small id=\"vdfname\" style=\"color:var(--ov-muted)\"></small><input type=\"file\" accept=\"image/*\" id=\"vdupload\" aria-label=\"Importer une image\" style=\"display:none\"></div>
+<div class=\"visdiff-row\"><label>Opacité</label><input type=\"range\" id=\"vdopacity\" min=\"0\" max=\"100\" value=\"60\"><span id=\"vdopval\">60%</span><label>Échelle</label><input type=\"range\" id=\"vdscale\" min=\"10\" max=\"400\" value=\"100\"><span id=\"vdscval\">100%</span></div>
+<div class=\"visdiff-row\"><label>X</label><input type=\"number\" id=\"vdx\" value=\"0\" style=\"width:80px\"><label>Y</label><input type=\"number\" id=\"vdy\" value=\"0\" style=\"width:80px\"></div>
+<div class=\"visdiff-row\"><label>Fusion</label><select id=\"vdblend\"><option value=\"normal\">normal</option><option value=\"multiply\">multiply</option><option value=\"screen\">screen</option><option value=\"overlay\">overlay</option><option value=\"darken\">darken</option><option value=\"lighten\">lighten</option><option value=\"difference\">difference</option><option value=\"color-dodge\">color-dodge</option><option value=\"color-burn\">color-burn</option><option value=\"hard-light\">hard-light</option><option value=\"soft-light\">soft-light</option></select></div>
+<div class=\"visdiff-row\"><label>Grille</label><input type=\"checkbox\" id=\"vdgrid\"><label>Pas</label><input type=\"number\" id=\"vdgridsp\" min=\"4\" max=\"64\" value=\"8\" style=\"width:70px\"><label>Opacité</label><input type=\"range\" id=\"vdgrido\" min=\"0\" max=\"100\" value=\"20\"></div>
+<div class=\"visdiff-row\"><label>Couleur de la grille</label><span class=\"visdiff-help\" title=\"Change uniquement la couleur du quadrillage d’alignement.\">i</span><input type=\"color\" id=\"vdgridc\" value=\"#7aa2ff\"></div>
+<div class=\"visdiff-row\"><label>Loupe</label><input type=\"checkbox\" id=\"vdloupe\"><label>Taille</label><input type=\"range\" id=\"vdloupes\" min=\"100\" max=\"300\" value=\"160\"><label>Zoom</label><input type=\"range\" id=\"vdloupez\" min=\"200\" max=\"800\" value=\"300\"></div>
+<div class=\"visdiff-row\"><label>Curseur</label><input type=\"checkbox\" id=\"vdsld\"><label>Position</label><input type=\"range\" id=\"vdsldp\" min=\"0\" max=\"100\" value=\"50\"></div>
+<div class=\"visdiff-row\"><label>Auto‑masquer le panneau</label><input type=\"checkbox\" id=\"vdautoui\"></div>
+<div class=\"visdiff-buttons\"><button id=\"vdexport\" class=\"visdiff-btn\">Exporter l\'overlay</button></div>
+<div class=\"visdiff-row\"><label>Sortie</label><input type=\"checkbox\" id=\"vdcopypng\" /> Copier dans le presse‑papiers</div>
+<div class=\"visdiff-buttons\"><button id=\"vdhide\" class=\"visdiff-btn\">Masquer overlay</button><button id=\"vdreset\" class=\"visdiff-btn\">Réinitialiser</button><button id=\"vdclose\" class=\"visdiff-btn danger\">Fermer</button></div>
+<div class=\"visdiff-row\" style=\"font-size:12px;color:#a7acc6\">Flèches: déplacer | +/-: échelle | D: difference | G: grille | L: loupe | S: curseur | X: export | P: capture | H: UI | U: auto‑masque | Échap: fermer</div>`;
+root.appendChild(panel);d.documentElement.appendChild(root);
+const reopen=document.createElement('button');reopen.className='visdiff-reopen visdiff-hidden';reopen.textContent='Afficher le panneau';root.appendChild(reopen);
+// Theme variables applied to overlay root based on persisted theme
+const themeKey='VD::theme';let th='desjardins';try{const t=localStorage.getItem(themeKey);if(t)th=t}catch(_){}
+const palettes={
+  dark:{panel:'#191c2f',text:'#f2f4ff',border:'#2a2f4a',muted:'#a7acc6',btn:'#222741',btnBorder:'#2a2f4a',btnText:'#f2f4ff',reopenBg:'#2a335a',reopenBorder:'#3a4474',accent:'#7aa2ff',knobBorder:'#0b0e1a',dangerBg:'#2b0f1a',dangerBorder:'#4a2030'},
+  light:{panel:'#ffffff',text:'#0b0e1a',border:'#e2e5ee',muted:'#5a607a',btn:'#eef1fd',btnBorder:'#d9e0fb',btnText:'#182046',reopenBg:'#eef1fd',reopenBorder:'#d9e0fb',accent:'#355bd6',knobBorder:'#e6e9ee',dangerBg:'#fde8ee',dangerBorder:'#f5b3c7'},
+  desjardins:{panel:'#ffffff',text:'#0f231a',border:'#cfe7da',muted:'#55655d',btn:'#e8f3ee',btnBorder:'#cfe7da',btnText:'#0f231a',reopenBg:'#e8f3ee',reopenBorder:'#cfe7da',accent:'#00873e',knobBorder:'#dfeae6',dangerBg:'#fde8ee',dangerBorder:'#f5b3c7'}
+};
+const pal=palettes[th]||palettes.desjardins;
+root.style.setProperty('--ov-panel', pal.panel);
+root.style.setProperty('--ov-text', pal.text);
+root.style.setProperty('--ov-border', pal.border);
+root.style.setProperty('--ov-muted', pal.muted);
+root.style.setProperty('--ov-btn', pal.btn);
+root.style.setProperty('--ov-btn-border', pal.btnBorder);
+root.style.setProperty('--ov-btn-text', pal.btnText);
+root.style.setProperty('--ov-reopen-bg', pal.reopenBg);
+root.style.setProperty('--ov-reopen-border', pal.reopenBorder);
+root.style.setProperty('--ov-accent', pal.accent);
+root.style.setProperty('--ov-knob-border', pal.knobBorder);
+root.style.setProperty('--ov-danger-bg', pal.dangerBg);
+root.style.setProperty('--ov-danger-border', pal.dangerBorder);
+let open=false,showUI=true;
+const $=sel=>panel.querySelector(sel);
+const btnPick=$('#vdpick');const fileInput=$('#vdupload');const fnLabel=$('#vdfname');const opInput=$('#vdopacity');const opVal=$('#vdopval');const scInput=$('#vdscale');const scVal=$('#vdscval');const xInput=$('#vdx');const yInput=$('#vdy');const blendSel=$('#vdblend');const btnHide=$('#vdhide');const btnReset=$('#vdreset');const btnClose=$('#vdclose');
+const gridChk=$('#vdgrid');const gridSp=$('#vdgridsp');const gridOp=$('#vdgrido');const gridColor=$('#vdgridc');
+const loupeChk=$('#vdloupe');const loupeSize=$('#vdloupes');const loupeZoom=$('#vdloupez');
+const sldChk=$('#vdsld');const sldPos=$('#vdsldp');
+const btnExport=$('#vdexport');const copyChk=$('#vdcopypng');
+const autoChk=$('#vdautoui');
+let posX=0,posY=0,scale=1,opacity=.6,blend='normal';
+let gOn=false,gSp=8,gOp=.2,gCol='#7aa2ff';
+let lOn=false,lSize=160,lZ=3;
+let sOn=false,sPct=50;
+let lastURL=null;
+let autoUI=false,autoTimer=null;
+const KEY='VD::'+location.host;function save(){clearTimeout(save.t);save.t=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify({posX,posY,scale,opacity,blend,gOn,gSp,gOp,gCol,lOn,lSize,lZ,sOn,sPct,autoUI}))}catch(_){}},300)}
+function load(){try{const v=JSON.parse(localStorage.getItem(KEY)||'{}');if(typeof v.posX==='number')posX=v.posX;if(typeof v.posY==='number')posY=v.posY;if(typeof v.scale==='number')scale=v.scale;if(typeof v.opacity==='number')opacity=v.opacity;if(typeof v.blend==='string')blend=v.blend;gOn=!!v.gOn;gSp=v.gSp||8;gOp=typeof v.gOp==='number'?v.gOp:.2;gCol=v.gCol||'#7aa2ff';lOn=!!v.lOn;lSize=v.lSize||160;lZ=v.lZ||3;sOn=!!v.sOn;sPct=(typeof v.sPct==='number'?v.sPct:50);autoUI=!!v.autoUI}catch(_){} }
+function hexToRgb(h){const m=/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(h);return m?{r:parseInt(m[1],16),g:parseInt(m[2],16),b:parseInt(m[3],16)}:{r:122,g:162,b:255}}
+function apply(){float.style.left=posX+'px';float.style.top=posY+'px';float.style.transform=`scale(${scale})`;img.style.opacity=opacity;img.style.mixBlendMode=blend;xInput.value=String(Math.round(posX));yInput.value=String(Math.round(posY));scInput.value=String(Math.round(scale*100));scVal.textContent=Math.round(scale*100)+'%';opInput.value=String(Math.round(opacity*100));opVal.textContent=Math.round(opacity*100)+'%';
+grid.classList.toggle('visdiff-hidden',!gOn);gridSp.value=String(gSp);gridOp.value=String(Math.round(gOp*100));gridChk.checked=gOn;gridColor.value=gCol;const c=hexToRgb(gCol);grid.style.setProperty('--s',gSp+'px');grid.style.setProperty('--o',String(gOp));grid.style.setProperty('--c',`rgba(${c.r},${c.g},${c.b},0.6)`);
+loupe.classList.toggle('visdiff-hidden',!lOn||!img.src);loupe.style.width=lSize+'px';loupe.style.height=lSize+'px';loupeChk.checked=lOn;loupeSize.value=String(lSize);loupeZoom.value=String(Math.round(lZ*100));
+// slider
+sldChk.checked=sOn;sldPos.value=String(Math.round(sPct));const sPx=Math.round((sPct/100)*window.innerWidth);handle.classList.toggle('visdiff-hidden',!sOn);handle.style.left=Math.max(0,Math.min(sPx,window.innerWidth-2))+'px';
+stage.style.clipPath=sOn?`inset(0 ${Math.max(0,window.innerWidth-sPx)}px 0 0)`:'initial';
+save()}
+function reset(){posX=0;posY=0;scale=1;opacity=.6;blend='normal';gOn=false;gSp=8;gOp=.2;gCol='#7aa2ff';lOn=false;lSize=160;lZ=3;apply()}
+function openUI(){open=true;root.classList.remove('visdiff-hidden');panel.classList.toggle('visdiff-hidden',!showUI);reopen.classList.toggle('visdiff-hidden',showUI||!open)}
+function closeUI(){open=false;root.classList.add('visdiff-hidden');panel.classList.add('visdiff-hidden');reopen.classList.add('visdiff-hidden')}
+function toggleUI(force){if(typeof force==='boolean')showUI=force;else showUI=!showUI;panel.classList.toggle('visdiff-hidden',!showUI);reopen.classList.toggle('visdiff-hidden',showUI||!open)}
+btnPick.addEventListener('click',()=>{ try{ fileInput.value=''; }catch(_){} fileInput.click() });
+fileInput.addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(!f)return;fnLabel.textContent=f.name||'';try{if(lastURL)URL.revokeObjectURL(lastURL)}catch(_){}
+  const url=URL.createObjectURL(f);lastURL=url;img.onload=()=>{lImg.src=img.src;float.classList.remove('visdiff-hidden');apply()};
+  img.onerror=()=>{alert('Impossible de charger cette image');};
+  img.src=url;
+});
+opInput.addEventListener('input',()=>{opacity=(parseInt(opInput.value,10)||0)/100;apply()});
+scInput.addEventListener('input',()=>{scale=(parseInt(scInput.value,10)||100)/100;apply()});
+xInput.addEventListener('change',()=>{posX=parseFloat(xInput.value)||0;apply()});
+yInput.addEventListener('change',()=>{posY=parseFloat(yInput.value)||0;apply()});
+blendSel.addEventListener('change',()=>{blend=blendSel.value;apply()});
+btnHide.addEventListener('click',()=>{float.classList.toggle('visdiff-hidden')});
+autoChk.addEventListener('change',()=>{autoUI=autoChk.checked;save()});
+panel.addEventListener('mouseenter',()=>{if(autoTimer){clearTimeout(autoTimer);autoTimer=null}});
+panel.addEventListener('mouseleave',()=>{if(autoUI){if(autoTimer)clearTimeout(autoTimer);autoTimer=setTimeout(()=>{toggleUI(false)},800)}});
+reopen.addEventListener('click',()=>toggleUI(true));
+btnReset.addEventListener('click',reset);
+btnClose.addEventListener('click',closeUI);
+gridChk.addEventListener('change',()=>{gOn=gridChk.checked;apply()});
+gridSp.addEventListener('change',()=>{gSp=Math.max(1,parseInt(gridSp.value,10)||8);apply()});
+gridOp.addEventListener('input',()=>{gOp=(parseInt(gridOp.value,10)||0)/100;apply()});
+gridColor.addEventListener('change',()=>{gCol=gridColor.value||'#7aa2ff';apply()});
+loupeChk.addEventListener('change',()=>{lOn=loupeChk.checked;apply()});
+loupeSize.addEventListener('input',()=>{lSize=Math.max(80,parseInt(loupeSize.value,10)||160);apply()});
+loupeZoom.addEventListener('input',()=>{lZ=(parseInt(loupeZoom.value,10)||300)/100;apply()});
+// slider controls
+sldChk.addEventListener('change',()=>{sOn=sldChk.checked;apply()});
+sldPos.addEventListener('input',()=>{sPct=Math.max(0,Math.min(100,parseInt(sldPos.value,10)||0));apply()});
+// export button
+btnExport.addEventListener('click',exportOverlay);
+let drag=false,ox=0,oy=0;float.addEventListener('mousedown',e=>{drag=true;ox=e.clientX-posX;oy=e.clientY-posY;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
+d.addEventListener('mousemove',e=>{if(drag){posX=e.clientX-ox;posY=e.clientY-oy;apply()}if(lOn&&img.src){const x=e.clientX,y=e.clientY;const sz=lSize;loupe.style.left=Math.max(8,Math.min(x+16,window.innerWidth-sz-8))+'px';loupe.style.top=Math.max(8,Math.min(y+16,window.innerHeight-sz-8))+'px';lImg.src=img.src;const ix=(x-posX)/scale;const iy=(y-posY)/scale;lImg.style.transform=`translate(${(-ix*lZ+sz/2)}px,${(-iy*lZ+sz/2)}px) scale(${lZ})`}}
+);
+d.addEventListener('mouseup',()=>{drag=false});
+// slider handle drag
+let sliding=false;handle.addEventListener('mousedown',e=>{sliding=true;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
+d.addEventListener('mousemove',e=>{if(sliding){const x=e.clientX;sPct=Math.max(0,Math.min(100,(x/window.innerWidth)*100));apply()}});
+d.addEventListener('mouseup',()=>{sliding=false});
+d.addEventListener('mouseup',()=>{drag=false});
+d.addEventListener('click', (e)=>{ const el = e.target.closest('.visdiff-btn'); if(el) try{ el.blur(); }catch(_){} });
+d.addEventListener('touchend', (e)=>{ const el = e.target.closest('.visdiff-btn'); if(el) try{ el.blur(); }catch(_){} }, {passive:true});
+d.addEventListener('keydown',e=>{if(!open)return;const step=e.shiftKey?10:1;if(e.key==='Escape'){closeUI()}else if(e.key==='ArrowLeft'){posX-=step;apply()}else if(e.key==='ArrowRight'){posX+=step;apply()}else if(e.key==='ArrowUp'){posY-=step;apply()}else if(e.key==='ArrowDown'){posY+=step;apply()}else if(e.key==='+'||e.key==='='){scale*=e.shiftKey?1.05:1.01;scInput.value=String(Math.round(scale*100));apply()}else if(e.key==='-'||e.key==='_'){scale/=e.shiftKey?1.05:1.01;scInput.value=String(Math.round(scale*100));apply()}else if(e.key==='d'||e.key==='D'){blend=(blend==='difference'?'normal':'difference');blendSel.value=blend;apply()}else if(e.key==='h'||e.key==='H'){toggleUI()}else if(e.key==='g'||e.key==='G'){gOn=!gOn;gridChk.checked=gOn;apply()}else if(e.key==='l'||e.key==='L'){lOn=!lOn;loupeChk.checked=lOn;apply()}else if(e.key==='s'||e.key==='S'){sOn=!sOn;sldChk.checked=sOn;apply()}else if(e.key==='x'||e.key==='X'){exportOverlay()}else if(e.key==='p'||e.key==='P'){snapshotPrompt()}else if(e.key==='u'||e.key==='U'){autoUI=!autoUI;autoChk.checked=autoUI;save()}});
+window.addEventListener('resize',apply); window.addEventListener('scroll',apply,{passive:true});
+async function exportOverlay(){try{if(!img.src){alert('Chargez une image d\'abord');return;}const w=window.innerWidth,h=window.innerHeight;const c=d.createElement('canvas');c.width=w;c.height=h;const cx=c.getContext('2d');cx.clearRect(0,0,w,h);cx.globalAlpha=opacity;if(sOn){cx.save();const sPx=Math.round((sPct/100)*w);cx.beginPath();cx.rect(0,0,sPx,h);cx.clip()}const dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;cx.drawImage(img,posX,posY,dw,dh);if(sOn){cx.restore()}if(copyChk&&copyChk.checked&&navigator.clipboard&&window.ClipboardItem){const blob=await new Promise(res=>c.toBlob(res,'image/png'));if(blob){try{await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);alert('Copié dans le presse‑papiers.');return;}catch(_){} }}const a=d.createElement('a');a.href=c.toDataURL('image/png');a.download='overlay-viewport.png';a.click()}catch(e){alert('Export impossible: '+e)}}
+async function snapshotPrompt(crop){let hid=false;try{if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){alert('Capture non supportée par ce navigateur');return}panel.classList.add('visdiff-hidden');handle.classList.add('visdiff-hidden');hid=true;const stream=await navigator.mediaDevices.getDisplayMedia({video:true});const track=stream.getVideoTracks()[0];const c=d.createElement('canvas');const cx=c.getContext('2d');let drew=false;let frameW=0,frameH=0;let drawSource=null;if('ImageCapture' in window){try{const ic=new ImageCapture(track);const bmp=await ic.grabFrame();frameW=bmp.width;frameH=bmp.height;c.width=frameW;c.height=frameH;cx.drawImage(bmp,0,0);drew=true;drawSource={type:'bmp',src:bmp};}catch(_){}}
+if(!drew){const v=d.createElement('video');v.srcObject=stream;await v.play();await new Promise(r=>setTimeout(r,140));frameW=v.videoWidth;frameH=v.videoHeight;c.width=frameW;c.height=frameH;cx.drawImage(v,0,0,frameW,frameH);v.pause();drawSource={type:'video',src:v};}
+if(crop && crop.w>3 && crop.h>3){const sx=frameW/window.innerWidth;const sy=frameH/window.innerHeight;const rx=Math.max(0,Math.round(crop.x*sx));const ry=Math.max(0,Math.round(crop.y*sy));const rw=Math.min(frameW-rx,Math.round(crop.w*sx));const rh=Math.min(frameH-ry,Math.round(crop.h*sy));const c2=d.createElement('canvas');c2.width=rw;c2.height=rh;const c2x=c2.getContext('2d');c2x.drawImage(drawSource.type==='video'?drawSource.src: c, rx, ry, rw, rh, 0, 0, rw, rh);if(copyChk&&copyChk.checked&&navigator.clipboard&&window.ClipboardItem){const blob=await new Promise(res=>c2.toBlob(res,'image/png'));if(blob){try{await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);alert('Copié dans le presse‑papiers.');return;}catch(_){} }}const a=d.createElement('a');a.href=c2.toDataURL('image/png');a.download='snapshot-zone.png';a.click();}
+else{if(copyChk&&copyChk.checked&&navigator.clipboard&&window.ClipboardItem){const blob=await new Promise(res=>c.toBlob(res,'image/png'));if(blob){try{await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);alert('Copié dans le presse‑papiers.');return;}catch(_){} }}const a=d.createElement('a');a.href=c.toDataURL('image/png');a.download='snapshot.png';a.click();}
+track.stop();}catch(e){alert('Capture annulée ou échouée: '+e)}finally{if(hid){panel.classList.toggle('visdiff-hidden',!showUI)}handle.classList.toggle('visdiff-hidden',!sOn)}}
+
+// Crop selection UI
+function startCropSelection(){ cropRect.style.width='0px'; cropRect.style.height='0px'; cropLayer.classList.remove('visdiff-hidden'); let selecting=false; let startX=0,startY=0; let moved=false;
+  function onDown(ev){ selecting=true; moved=false; const x=ev.clientX, y=ev.clientY; startX=x; startY=y; positionRect(x,y,0,0); ev.preventDefault(); }
+  function onMove(ev){ if(!selecting) return; moved=true; const x=ev.clientX, y=ev.clientY; const rx=Math.min(startX,x), ry=Math.min(startY,y); const rw=Math.abs(x-startX), rh=Math.abs(y-startY); positionRect(rx,ry,rw,rh); }
+  function onUp(ev){ if(!selecting) return; selecting=false; detach(); const rect = cropRect.getBoundingClientRect(); cropLayer.classList.add('visdiff-hidden'); const crop = { x: rect.left, y: rect.top, w: rect.width, h: rect.height }; if(!moved || crop.w<4 || crop.h<4){ return; } snapshotPrompt(crop); }
+  function onKey(ev){ if(ev.key==='Escape'){ selecting=false; detach(); cropLayer.classList.add('visdiff-hidden'); } }
+  function detach(){ d.removeEventListener('mousemove', onMove); d.removeEventListener('mouseup', onUp); d.removeEventListener('keydown', onKey); cropLayer.removeEventListener('mousedown', onDown); }
+  function positionRect(x,y,w,h){ cropRect.style.left=x+'px'; cropRect.style.top=y+'px'; cropRect.style.width=w+'px'; cropRect.style.height=h+'px'; }
+  cropLayer.addEventListener('mousedown', onDown, {passive:false}); d.addEventListener('mousemove', onMove); d.addEventListener('mouseup', onUp); d.addEventListener('keydown', onKey);
+}
+
+// Full page capture: scrolls and stitches the page
+async function snapshotFullPage(){
+  let hid=false; const originalY=window.scrollY;
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){alert('Capture non supportée par ce navigateur');return}
+    panel.classList.add('visdiff-hidden'); handle.classList.add('visdiff-hidden'); hid=true;
+    const stream=await navigator.mediaDevices.getDisplayMedia({video:true});
+    const track=stream.getVideoTracks()[0];
+    const video=document.createElement('video');
+    video.srcObject=stream; await video.play();
+    await new Promise(r=>setTimeout(r,180));
+    const frameW=video.videoWidth, frameH=video.videoHeight;
+    if(!frameW||!frameH){throw new Error('Dimensions de capture invalides');}
+    const vw=window.innerWidth, vh=window.innerHeight;
+    const sx=frameW/vw, sy=frameH/vh;
+    const docH=Math.max(document.documentElement.scrollHeight, document.body.scrollHeight, vh);
+    const outH=Math.min(Math.round(docH*sy), 30000); // clamp to avoid huge canvases
+    const out=document.createElement('canvas'); out.width=frameW; out.height=outH; const ox=out.getContext('2d');
+    let y=0; let destY=0;
+    while(y < docH){
+      window.scrollTo(0, y);
+      await new Promise(r=>setTimeout(r,160));
+      const visible=Math.min(vh, docH - y);
+      const sh=Math.round(visible*sy);
+      ox.drawImage(video, 0, 0, frameW, sh, 0, destY, frameW, sh);
+      destY += sh; y += visible;
+      if(destY >= outH-1) break;
+    }
+    window.scrollTo(0, originalY);
+    track.stop(); video.pause();
+    if(copyChk&&copyChk.checked&&navigator.clipboard&&window.ClipboardItem){const blob=await new Promise(res=>out.toBlob(res,'image/png')); if(blob){ try{ await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]); alert('Copié dans le presse‑papiers.'); return; }catch(_){} }}
+    const a=document.createElement('a'); a.href=out.toDataURL('image/png'); a.download='snapshot-fullpage.png'; a.click();
+  }catch(e){ alert('Capture annulée ou échouée: '+e) }
+  finally{ if(hid){ panel.classList.toggle('visdiff-hidden',!showUI) } handle.classList.toggle('visdiff-hidden',!sOn) }
+}
+load();autoChk.checked=autoUI; apply();openUI();
+window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
+  </script>
+
+  <script>
+    // Setup bookmarklet href at runtime to keep it readable in repo.
+    (function(){
+      // Use inline injector so it works even when this file is opened via file://
+      const code = document.getElementById('visdiff-bookmarklet-code').textContent.trim();
+      const href = 'javascript:'+encodeURIComponent(code);
+      const a = document.getElementById('bookmarkletLink');
+      const aTop = document.getElementById('bookmarkletLinkTop');
+      a.setAttribute('href', href);
+      aTop.setAttribute('href', href);
+      // Copy to clipboard for users qui ne peuvent pas glisser
+      document.getElementById('copyBookmarklet').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(href); alert('Bookmarklet copié dans le presse‑papiers. Collez‑le comme URL d’un nouveau favori.'); }
+        catch { alert('Impossible de copier automatiquement. Copiez le lien manuellement.'); }
+      });
+      // Demo here: mounts the overlay sur cette même page
+      document.getElementById('demoHere').addEventListener('click', () => {
+        // exécute le code du bookmarklet localement
+        // eslint-disable-next-line no-eval
+        eval(code);
+      });
+    })();
+
+    // Theme select with persistence (includes "Desjardins" palette)
+    (function(){
+      const key = 'VD::theme';
+      const sel = document.getElementById('themeSelect');
+      const root = document.documentElement;
+      function applyTheme(t){
+        if(t==='light'){ root.setAttribute('data-theme','light'); }
+        else if(t==='desjardins'){ root.setAttribute('data-theme','desjardins'); }
+        else { root.removeAttribute('data-theme'); }
+        if(sel){ sel.value = t || 'dark'; }
+      }
+      let saved = null; try{ saved = localStorage.getItem(key); }catch(_){ }
+      // Default to Desjardins if none set, per request
+      const initial = saved || 'desjardins';
+      applyTheme(initial);
+      if(sel){ sel.addEventListener('change', ()=>{ const t = sel.value; applyTheme(t); try{ localStorage.setItem(key, t); }catch(_){} }); }
+    })();
+
+    // Tabs logic
+    const tabs = document.querySelectorAll('.tab');
+    const panels = document.querySelectorAll('.tabpanel');
+    tabs.forEach(btn => btn.addEventListener('click', () => {
+      tabs.forEach(b => { b.classList.toggle('active', b===btn); b.setAttribute('aria-selected', b===btn); });
+      panels.forEach(p => { p.classList.toggle('active', p.id===btn.dataset.tab); p.setAttribute('aria-hidden', p.id!==btn.dataset.tab); });
+    }));
+    // Image diff: download
+    (function(){
+      const btn = document.getElementById('downloadDiff');
+      const canvas = document.getElementById('diffCanvas');
+      if(btn){ btn.addEventListener('click', ()=>{
+        try { const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='diff.png'; a.click(); }
+        catch(e){ alert('Téléchargement impossible: '+e); }
+      }); }
+    })();
+
+    // Image diff: custom file pickers
+    (function(){
+      document.querySelectorAll('.dropzone').forEach(dz=>{
+        const pick = dz.querySelector('.pick');
+        const input = dz.querySelector('input[type=file]');
+        const fname = dz.querySelector('.fname');
+        if(pick && input){
+          pick.addEventListener('click',()=>input.click());
+          input.addEventListener('change',()=>{ fname.textContent = input.files && input.files[0] ? input.files[0].name : ''; });
+        }
+      });
+    })();
+
+    // Remove sticky pressed state for buttons and link-buttons in main UI
+    (function(){
+      const unpress = (e)=>{ const el = e.target && (e.target.closest('button, a.btn, .btn, .pick, .tab, #bookmarkletLink, #bookmarkletLinkTop')); if(el){ try{ el.blur(); }catch(_){} } };
+      document.addEventListener('mouseup', unpress);
+      document.addEventListener('click', unpress);
+      document.addEventListener('keyup', (e)=>{ if(e.key==='Enter' || e.key===' '){ unpress(e); } });
+    })();
+  </script>
+</body>
+<!--
+  Note: injector.min.js is a tiny, self-contained version of overlay controls to load via bookmarklet.
+  For local file:// usage, some browsers block javascript: URLs dragging. If so, host via a local server or GitHub Pages.
+-->
+</html>
