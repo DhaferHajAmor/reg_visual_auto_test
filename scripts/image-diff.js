@@ -4,6 +4,7 @@
 
   const dropzones = $$('.dropzone');
   const canvas = $('#diffCanvas');
+  const diffStatus = document.getElementById('diffStatus');
   const maskCanvas = document.getElementById('maskCanvas');
   const ctx = canvas.getContext('2d');
   const mctx = maskCanvas ? maskCanvas.getContext('2d') : null;
@@ -100,6 +101,7 @@
   const t = mode==='pixel' ? Math.round((tPct/100) * 255) : 1 - (tPct/100); // SSIM threshold: 1.0 identical -> flag if ssim < t
     const color = hexToRgb(diffColorInput.value || '#ff0055');
 
+  let diffCount = 0;
   if(mode==='pixel'){
     for(let i=0; i<dA.data.length; i+=4){
       const px = (i/4) % w; const py = Math.floor((i/4)/w);
@@ -137,6 +139,7 @@
         }
       }
       if(maxDiff > t){
+        diffCount++;
         out.data[i] = color.r;
         out.data[i+1] = color.g;
         out.data[i+2] = color.b;
@@ -180,12 +183,22 @@
           out.data[idx]=dB.data[idx]*0.6; out.data[idx+1]=dB.data[idx+1]*0.6; out.data[idx+2]=dB.data[idx+2]*0.6; out.data[idx+3]=255; continue;
         }
         const s = ssimAt(x,y);
-        if(s < t){ out.data[idx]=color.r; out.data[idx+1]=color.g; out.data[idx+2]=color.b; out.data[idx+3]=255; }
+        if(s < t){ diffCount++; out.data[idx]=color.r; out.data[idx+1]=color.g; out.data[idx+2]=color.b; out.data[idx+3]=255; }
         else { out.data[idx]=dB.data[idx]*0.6; out.data[idx+1]=dB.data[idx+1]*0.6; out.data[idx+2]=dB.data[idx+2]*0.6; out.data[idx+3]=255; }
       }
     }
   }
   ctx.putImageData(out, 0, 0);
+  // Update status UI
+  if(diffStatus){
+    if(diffCount===0){ diffStatus.textContent = 'Aucune différence détectée avec le seuil choisi.'; diffStatus.style.display='block'; diffStatus.style.color = '#0b8a3c'; }
+    else {
+      const total = (out.width||w) * (out.height||h);
+      const pct = Math.min(100, ((diffCount/total)*100).toFixed(3));
+      diffStatus.textContent = `${diffCount.toLocaleString()} pixels différents (~${pct}%)`;
+      diffStatus.style.display='block'; diffStatus.style.color = '';
+    }
+  }
   running = false; runBtn.removeAttribute('disabled');
   }
 
