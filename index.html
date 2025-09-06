@@ -181,6 +181,7 @@ const sldChk=$('#vdsld');const sldPos=$('#vdsldp');
 const btnExport=$('#vdexport');
 const autoChk=$('#vdautoui');
 let posX=0,posY=0,scale=1,opacity=.6,blend='normal';
+let prevOpacityForDiff=null;
 let gOn=false,gSp=8,gOp=.2,gCol='#7aa2ff';
 let lOn=false,lSize=160,lZ=3;
 let sOn=false,sPct=50;
@@ -197,6 +198,18 @@ sldChk.checked=sOn;sldPos.value=String(Math.round(sPct));const sPx=Math.round((s
 stage.style.clipPath=sOn?`inset(0 ${Math.max(0,window.innerWidth-sPx)}px 0 0)`:'initial';
 save()}
 function reset(){posX=0;posY=0;scale=1;opacity=.6;blend='normal';gOn=false;gSp=8;gOp=.2;gCol='#7aa2ff';lOn=false;lSize=160;lZ=3;apply()}
+function setBlend(b){
+  // Auto-max opacity when entering difference for visibility; restore when leaving
+  if(b==='difference' && blend!=="difference"){
+    prevOpacityForDiff = opacity;
+    opacity = 1; if(opInput){ opInput.value='100'; opVal.textContent='100%'; }
+  } else if(blend==='difference' && b!=="difference" && prevOpacityForDiff!=null){
+    opacity = prevOpacityForDiff; prevOpacityForDiff=null;
+    if(opInput){ const v=Math.round(opacity*100); opInput.value=String(v); opVal.textContent=v+'%'; }
+  }
+  blend=b; if(blendSel){ blendSel.value=b; }
+  apply();
+}
 function openUI(){open=true;root.classList.remove('visdiff-hidden');panel.classList.toggle('visdiff-hidden',!showUI);reopen.classList.toggle('visdiff-hidden',showUI||!open)}
 function closeUI(){open=false;root.classList.add('visdiff-hidden');panel.classList.add('visdiff-hidden');reopen.classList.add('visdiff-hidden')}
 function toggleUI(force){if(typeof force==='boolean')showUI=force;else showUI=!showUI;panel.classList.toggle('visdiff-hidden',!showUI);reopen.classList.toggle('visdiff-hidden',showUI||!open)}
@@ -210,7 +223,7 @@ opInput.addEventListener('input',()=>{opacity=(parseInt(opInput.value,10)||0)/10
 scInput.addEventListener('input',()=>{scale=(parseInt(scInput.value,10)||100)/100;apply()});
 xInput.addEventListener('change',()=>{posX=parseFloat(xInput.value)||0;apply()});
 yInput.addEventListener('change',()=>{posY=parseFloat(yInput.value)||0;apply()});
-blendSel.addEventListener('change',()=>{blend=blendSel.value;apply()});
+blendSel.addEventListener('change',()=>{setBlend(blendSel.value)});
 btnHide.addEventListener('click',()=>{float.classList.toggle('visdiff-hidden')});
 autoChk.addEventListener('change',()=>{autoUI=autoChk.checked;save()});
 panel.addEventListener('mouseenter',()=>{if(autoTimer){clearTimeout(autoTimer);autoTimer=null}});
@@ -247,7 +260,7 @@ d.addEventListener('mouseup',()=>{sliding=false});
 d.addEventListener('mouseup',()=>{drag=false});
 d.addEventListener('click', (e)=>{ const el = e.target.closest('.visdiff-btn'); if(el) try{ el.blur(); }catch(_){} });
 d.addEventListener('touchend', (e)=>{ const el = e.target.closest('.visdiff-btn'); if(el) try{ el.blur(); }catch(_){} }, {passive:true});
-d.addEventListener('keydown',e=>{if(!open)return;const step=e.shiftKey?10:1;if(e.key==='Escape'){closeUI()}else if(e.key==='ArrowLeft'){posX-=step;apply()}else if(e.key==='ArrowRight'){posX+=step;apply()}else if(e.key==='ArrowUp'){posY-=step;apply()}else if(e.key==='ArrowDown'){posY+=step;apply()}else if(e.key==='+'||e.key==='='){scale*=e.shiftKey?1.05:1.01;scInput.value=String(Math.round(scale*100));apply()}else if(e.key==='-'||e.key==='_'){scale/=e.shiftKey?1.05:1.01;scInput.value=String(Math.round(scale*100));apply()}else if(e.key==='d'||e.key==='D'){blend=(blend==='difference'?'normal':'difference');blendSel.value=blend;apply()}else if(e.key==='h'||e.key==='H'){toggleUI()}else if(e.key==='g'||e.key==='G'){gOn=!gOn;gridChk.checked=gOn;apply()}else if(e.key==='l'||e.key==='L'){lOn=!lOn;loupeChk.checked=lOn;apply()}else if(e.key==='s'||e.key==='S'){sOn=!sOn;sldChk.checked=sOn;apply()}else if(e.key==='x'||e.key==='X'){exportOverlay()}else if(e.key==='p'||e.key==='P'){snapshotPrompt()}else if(e.key==='u'||e.key==='U'){autoUI=!autoUI;autoChk.checked=autoUI;save()}});
+d.addEventListener('keydown',e=>{if(!open)return;const step=e.shiftKey?10:1;if(e.key==='Escape'){closeUI()}else if(e.key==='ArrowLeft'){posX-=step;apply()}else if(e.key==='ArrowRight'){posX+=step;apply()}else if(e.key==='ArrowUp'){posY-=step;apply()}else if(e.key==='ArrowDown'){posY+=step;apply()}else if(e.key==='+'||e.key==='='){scale*=e.shiftKey?1.05:1.01;scInput.value=String(Math.round(scale*100));apply()}else if(e.key==='-'||e.key==='_'){scale/=e.shiftKey?1.05:1.01;scInput.value=String(Math.round(scale*100));apply()}else if(e.key==='d'||e.key==='D'){setBlend(blend==='difference'?'normal':'difference')}else if(e.key==='h'||e.key==='H'){toggleUI()}else if(e.key==='g'||e.key==='G'){gOn=!gOn;gridChk.checked=gOn;apply()}else if(e.key==='l'||e.key==='L'){lOn=!lOn;loupeChk.checked=lOn;apply()}else if(e.key==='s'||e.key==='S'){sOn=!sOn;sldChk.checked=sOn;apply()}else if(e.key==='x'||e.key==='X'){exportOverlay()}else if(e.key==='p'||e.key==='P'){snapshotPrompt()}else if(e.key==='u'||e.key==='U'){autoUI=!autoUI;autoChk.checked=autoUI;save()}});
 window.addEventListener('resize',apply); window.addEventListener('scroll',apply,{passive:true});
 async function exportOverlay(){try{if(!img.src){alert('Chargez une image d\'abord');return;}const w=window.innerWidth,h=window.innerHeight;const c=d.createElement('canvas');c.width=w;c.height=h;const cx=c.getContext('2d');cx.clearRect(0,0,w,h);cx.globalAlpha=opacity;if(sOn){cx.save();const sPx=Math.round((sPct/100)*w);cx.beginPath();cx.rect(0,0,sPx,h);cx.clip()}const dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;const dx=posX-window.scrollX;const dy=posY-window.scrollY;cx.drawImage(img,dx,dy,dw,dh);if(sOn){cx.restore()}const a=d.createElement('a');a.href=c.toDataURL('image/png');a.download='overlay-viewport.png';a.click()}catch(e){alert('Export impossible: '+e)}}
 async function snapshotPrompt(crop){let hid=false;try{if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){alert('Capture non supportée par ce navigateur');return}panel.classList.add('visdiff-hidden');handle.classList.add('visdiff-hidden');hid=true;const stream=await navigator.mediaDevices.getDisplayMedia({video:true});const track=stream.getVideoTracks()[0];const c=d.createElement('canvas');const cx=c.getContext('2d');let drew=false;let frameW=0,frameH=0;let drawSource=null;if('ImageCapture' in window){try{const ic=new ImageCapture(track);const bmp=await ic.grabFrame();frameW=bmp.width;frameH=bmp.height;c.width=frameW;c.height=frameH;cx.drawImage(bmp,0,0);drew=true;drawSource={type:'bmp',src:bmp};}catch(_){}}
