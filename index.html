@@ -113,7 +113,7 @@
 .visdiff-btn{background:var(--ov-btn);border:1px solid var(--ov-btn-border);color:var(--ov-btn-text);padding:6px 10px;border-radius:8px;cursor:pointer}
 .visdiff-btn.danger{border-color:var(--ov-danger-border);background:var(--ov-danger-bg);color:#ffc8d7}
 .visdiff-stage{position:fixed;inset:0;pointer-events:none}
-.visdiff-floating{position:absolute;left:0;top:0;transform-origin:top left;pointer-events:auto;cursor:move}
+.visdiff-floating{position:absolute;left:0;top:0;transform-origin:top left;pointer-events:auto;cursor:move;touch-action:none}
 .visdiff-floating img{display:block;max-width:none}
 .visdiff-hidden{display:none !important}
 .visdiff-grid{position:fixed;inset:0;pointer-events:none;--s:8px;--o:.2;--c:var(--ov-grid-rgba, rgba(122,162,255,.6));background-image:repeating-linear-gradient(0deg,var(--c) 0 1px,transparent 1px,var(--s)),repeating-linear-gradient(90deg,var(--c) 0 1px,transparent 1px,var(--s));opacity:var(--o)}
@@ -234,6 +234,11 @@ let drag=false,ox=0,oy=0;float.addEventListener('mousedown',e=>{drag=true;ox=e.c
 d.addEventListener('mousemove',e=>{if(drag){posX=e.clientX+window.scrollX-ox;posY=e.clientY+window.scrollY-oy;apply()}if(lOn&&img.src){const x=e.clientX,y=e.clientY;const sz=lSize;loupe.style.left=Math.max(8,Math.min(x+16,window.innerWidth-sz-8))+'px';loupe.style.top=Math.max(8,Math.min(y+16,window.innerHeight-sz-8))+'px';lImg.src=img.src;const dispX=posX-window.scrollX;const dispY=posY-window.scrollY;const ix=(x-dispX)/scale;const iy=(y-dispY)/scale;lImg.style.transform=`translate(${(-ix*lZ+sz/2)}px,${(-iy*lZ+sz/2)}px) scale(${lZ})`}}
 );
 d.addEventListener('mouseup',()=>{drag=false});
+// Touch support for dragging overlay and moving loupe
+float.addEventListener('touchstart',e=>{const t=e.touches&&e.touches[0];if(!t)return;drag=true;ox=t.clientX+window.scrollX-posX;oy=t.clientY+window.scrollY-posY;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
+d.addEventListener('touchmove',e=>{const t=e.touches&&e.touches[0];if(!t)return;let handled=false;if(drag){posX=t.clientX+window.scrollX-ox;posY=t.clientY+window.scrollY-oy;apply();handled=true}if(sliding){const x=t.clientX;sPct=Math.max(0,Math.min(100,(x/window.innerWidth)*100));apply();handled=true}if(lOn&&img.src){const x=t.clientX,y=t.clientY;const sz=lSize;loupe.style.left=Math.max(8,Math.min(x+16,window.innerWidth-sz-8))+'px';loupe.style.top=Math.max(8,Math.min(y+16,window.innerHeight-sz-8))+'px';lImg.src=img.src;const dispX=posX-window.scrollX;const dispY=posY-window.scrollY;const ix=(x-dispX)/scale;const iy=(y-dispY)/scale;lImg.style.transform=`translate(${(-ix*lZ+sz/2)}px,${(-iy*lZ+sz/2)}px) scale(${lZ})`}if(handled)e.preventDefault()},{passive:false});
+d.addEventListener('touchend',()=>{drag=false;sliding=false},{passive:true});
+d.addEventListener('touchcancel',()=>{drag=false;sliding=false},{passive:true});
 // slider handle drag
 let sliding=false;handle.addEventListener('mousedown',e=>{sliding=true;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
 d.addEventListener('mousemove',e=>{if(sliding){const x=e.clientX;sPct=Math.max(0,Math.min(100,(x/window.innerWidth)*100));apply()}});
