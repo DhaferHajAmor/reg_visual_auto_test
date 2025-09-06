@@ -241,6 +241,7 @@ d.addEventListener('touchend',()=>{drag=false;sliding=false},{passive:true});
 d.addEventListener('touchcancel',()=>{drag=false;sliding=false},{passive:true});
 // slider handle drag
 let sliding=false;handle.addEventListener('mousedown',e=>{sliding=true;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
+handle.addEventListener('touchstart',e=>{sliding=true;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
 d.addEventListener('mousemove',e=>{if(sliding){const x=e.clientX;sPct=Math.max(0,Math.min(100,(x/window.innerWidth)*100));apply()}});
 d.addEventListener('mouseup',()=>{sliding=false});
 d.addEventListener('mouseup',()=>{drag=false});
