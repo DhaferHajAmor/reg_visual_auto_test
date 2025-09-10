@@ -243,15 +243,17 @@ sldChk.addEventListener('change',()=>{sOn=sldChk.checked;apply()});
 sldPos.addEventListener('input',()=>{sPct=Math.max(0,Math.min(100,parseInt(sldPos.value,10)||0));apply()});
 // export button
 btnExport.addEventListener('click',exportOverlay);
-let drag=false,ox=0,oy=0;float.addEventListener('mousedown',e=>{drag=true;ox=e.clientX+window.scrollX-posX;oy=e.clientY+window.scrollY-posY;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
+let drag=false,ox=0,oy=0;
+// Pinch variables
+let pinching=false,initialDist=0,initialScale=1;float.addEventListener('mousedown',e=>{drag=true;ox=e.clientX+window.scrollX-posX;oy=e.clientY+window.scrollY-posY;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
 d.addEventListener('mousemove',e=>{if(drag){posX=e.clientX+window.scrollX-ox;posY=e.clientY+window.scrollY-oy;apply()}if(lOn&&img.src){const x=e.clientX,y=e.clientY;const sz=lSize;loupe.style.left=Math.max(8,Math.min(x+16,window.innerWidth-sz-8))+'px';loupe.style.top=Math.max(8,Math.min(y+16,window.innerHeight-sz-8))+'px';lImg.src=img.src;const dispX=posX-window.scrollX;const dispY=posY-window.scrollY;const ix=(x-dispX)/scale;const iy=(y-dispY)/scale;lImg.style.transform=`translate(${(-ix*lZ+sz/2)}px,${(-iy*lZ+sz/2)}px) scale(${lZ})`}}
 );
 d.addEventListener('mouseup',()=>{drag=false});
 // Touch support for dragging overlay and moving loupe
-float.addEventListener('touchstart',e=>{const t=e.touches&&e.touches[0];if(!t)return;drag=true;ox=t.clientX+window.scrollX-posX;oy=t.clientY+window.scrollY-posY;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
-d.addEventListener('touchmove',e=>{const t=e.touches&&e.touches[0];if(!t)return;let handled=false;if(drag){posX=t.clientX+window.scrollX-ox;posY=t.clientY+window.scrollY-oy;apply();handled=true}if(sliding){const x=t.clientX;sPct=Math.max(0,Math.min(100,(x/window.innerWidth)*100));apply();handled=true}if(lOn&&img.src){const x=t.clientX,y=t.clientY;const sz=lSize;loupe.style.left=Math.max(8,Math.min(x+16,window.innerWidth-sz-8))+'px';loupe.style.top=Math.max(8,Math.min(y+16,window.innerHeight-sz-8))+'px';lImg.src=img.src;const dispX=posX-window.scrollX;const dispY=posY-window.scrollY;const ix=(x-dispX)/scale;const iy=(y-dispY)/scale;lImg.style.transform=`translate(${(-ix*lZ+sz/2)}px,${(-iy*lZ+sz/2)}px) scale(${lZ})`}if(handled)e.preventDefault()},{passive:false});
-d.addEventListener('touchend',()=>{drag=false;sliding=false},{passive:true});
-d.addEventListener('touchcancel',()=>{drag=false;sliding=false},{passive:true});
+float.addEventListener('touchstart',e=>{const touches=e.touches;if(touches.length===1){const t=touches[0];drag=true;ox=t.clientX+window.scrollX-posX;oy=t.clientY+window.scrollY-posY;if(autoUI&&showUI)toggleUI(false);e.preventDefault()}else if(touches.length===2){pinching=true;const t1=touches[0],t2=touches[1];initialDist=Math.hypot(t1.clientX-t2.clientX,t1.clientY-t2.clientY);initialScale=scale;e.preventDefault()}},{passive:false});
+d.addEventListener('touchmove',e=>{const touches=e.touches;if(touches.length===1){const t=touches[0];let handled=false;if(drag){posX=t.clientX+window.scrollX-ox;posY=t.clientY+window.scrollY-oy;apply();handled=true}if(sliding){const x=t.clientX;sPct=Math.max(0,Math.min(100,(x/window.innerWidth)*100));apply();handled=true}if(lOn&&img.src){const x=t.clientX,y=t.clientY;const sz=lSize;loupe.style.left=Math.max(8,Math.min(x+16,window.innerWidth-sz-8))+'px';loupe.style.top=Math.max(8,Math.min(y+16,window.innerHeight-sz-8))+'px';lImg.src=img.src;const dispX=posX-window.scrollX;const dispY=posY-window.scrollY;const ix=(x-dispX)/scale;const iy=(y-dispY)/scale;lImg.style.transform=`translate(${(-ix*lZ+sz/2)}px,${(-iy*lZ+sz/2)}px) scale(${lZ})`}if(handled)e.preventDefault()}else if(touches.length===2&&pinching){const t1=touches[0],t2=touches[1];const dist=Math.hypot(t1.clientX-t2.clientX,t1.clientY-t2.clientY);scale=initialScale*(dist/initialDist);scale=Math.max(0.1,Math.min(5,scale));scInput.value=String(Math.round(scale*100));apply();e.preventDefault()}},{passive:false});
+d.addEventListener('touchend',()=>{drag=false;sliding=false;pinching=false},{passive:true});
+d.addEventListener('touchcancel',()=>{drag=false;sliding=false;pinching=false},{passive:true});
 // slider handle drag
 let sliding=false;handle.addEventListener('mousedown',e=>{sliding=true;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
 handle.addEventListener('touchstart',e=>{sliding=true;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
