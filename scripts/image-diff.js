@@ -191,12 +191,18 @@
   ctx.putImageData(out, 0, 0);
   // Update status UI
   if(diffStatus){
-    if(diffCount===0){ diffStatus.textContent = 'Aucune différence détectée avec le seuil choisi.'; diffStatus.style.display='block'; diffStatus.style.color = '#0b8a3c'; }
-    else {
+    diffStatus.style.display='block';
+    diffStatus.style.textAlign='center';
+    diffStatus.style.fontWeight='600';
+    if(diffCount===0){
+      diffStatus.textContent = 'Aucune différence détectée avec le seuil choisi.';
+      diffStatus.style.color = '#0b6e32'; // vert foncé
+      diffStatus.style.background='';
+    } else {
       const total = (out.width||w) * (out.height||h);
       const pct = Math.min(100, ((diffCount/total)*100).toFixed(3));
       diffStatus.textContent = `${diffCount.toLocaleString()} pixels différents (~${pct}%)`;
-      diffStatus.style.display='block'; diffStatus.style.color = '';
+      diffStatus.style.color = '#b00020'; // rouge
     }
   }
   running = false; runBtn.removeAttribute('disabled');
