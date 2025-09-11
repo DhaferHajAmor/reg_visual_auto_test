@@ -24,6 +24,7 @@
   const clearBtn = $('#clearImages');
 
   const state = { A:null, B:null };
+  const objectURLs = { A:null, B:null }; // track blob URLs for cleanup
   let hasDiff = false; // diff executed at least once
   let hasDiffPixels = false; // any differing pixels
   function showWarn(msg){
@@ -58,7 +59,9 @@
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
-      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+  // Do not revoke the object URL immediately; it is reused for the preview <img> element.
+  // We can optionally revoke later when images are cleared.
+  img.onload = () => { /* URL.revokeObjectURL(url); */ resolve(img); };
       img.onerror = reject;
       img.src = url;
     });
@@ -80,6 +83,8 @@
     const file = files && files[0];
     if(!file) return;
     const img = await fileToImage(file);
+  // Store URL for cleanup (src currently a blob:... from fileToImage)
+  objectURLs[side] = img.src;
   state[side] = img; drawPreview(img, side); hasDiff=false; hasDiffPixels=false; updateButtons();
   }
 
@@ -307,6 +312,8 @@
   });
   clearBtn.addEventListener('click', () => {
     if(!(state.A || state.B)){ showWarn('⚠️ Aucune image à effacer.'); return; }
+  // Revoke existing object URLs
+  ['A','B'].forEach(k=>{ if(objectURLs[k]){ try{ URL.revokeObjectURL(objectURLs[k]); }catch(_){ } objectURLs[k]=null; } });
     state.A=null; state.B=null; hasDiff=false; hasDiffPixels=false; updateButtons();
     // Clear previews and filenames
     $$('.dropzone img').forEach(i=>i.removeAttribute('src'));
