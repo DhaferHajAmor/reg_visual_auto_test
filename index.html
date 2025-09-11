@@ -340,6 +340,10 @@ window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
       const aTop = document.getElementById('bookmarkletLinkTop');
       a.setAttribute('href', href);
       aTop.setAttribute('href', href);
+      // Handle direct clicks (for browsers blocking javascript: URLs)
+      const runBookmarklet = (e) => { e.preventDefault(); try { eval(code); } catch(err) { alert('Erreur: ' + err.message); } };
+      a.addEventListener('click', runBookmarklet);
+      aTop.addEventListener('click', runBookmarklet);
       // Copy to clipboard for users qui ne peuvent pas glisser
       document.getElementById('copyBookmarklet').addEventListener('click', async () => {
         try { await navigator.clipboard.writeText(href); alert('Bookmarklet copié dans le presse‑papiers. Collez‑le comme URL d’un nouveau favori.'); }
