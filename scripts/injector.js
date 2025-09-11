@@ -1,103 +1,3 @@
-<!doctype html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Visual Diff — Zéro‑installation</title>
-  <link rel="stylesheet" href="styles.css" />
-  <meta name="description" content="Superposez un PNG Figma sur n’importe quel site via un bookmarklet, ou comparez deux images avec un diff pixel. Aucune installation." />
-  <link rel="icon" href="data:," />
-  <script defer src="scripts/image-diff.js"></script>
-</head>
-<body>
-  <header class="container">
-    <h1>Visual Diff</h1>
-    <p class="subtitle">Comparaison visuelle sans installation pour pages et images.</p>
-    <div class="hero">
-      <p>Glissez le bookmarklet, puis comparez votre PNG Figma avec n’importe quelle page web. Ou utilisez le diff d’images intégré.</p>
-      <div class="cta-row">
-        <a id="bookmarkletLinkTop" class="btn" href="#">Superposition en direct</a>
-        <button id="copyBookmarklet" class="btn secondary" type="button">Copier le bookmarklet</button>
-        <button id="demoHere" class="btn secondary" type="button">Essayer ici (démo)</button>
-        <label class="sr-only" for="themeSelect">Thème</label>
-        <select id="themeSelect" class="btn secondary" title="Choisir un thème">
-          <option value="auto">Auto (système)</option>
-          <option value="dark">Sombre</option>
-          <option value="light">Clair</option>
-          <option value="desjardins">Desjardins</option>
-        </select>
-      </div>
-    </div>
-  </header>  
-
-  <main class="container">
-    <nav class="tabs" role="tablist" aria-label="Modes">
-  <button class="tab active" data-tab="bookmarklet" role="tab" aria-selected="true">Superposition (Bookmarklet)</button>
-  <button class="tab" data-tab="image-diff" role="tab" aria-selected="false">Image ↔ Image</button>
-    </nav>
-
-    <section id="bookmarklet" class="tabpanel active" role="tabpanel">
-      <h2>Superposition en direct (Bookmarklet)</h2>
-      <ol>
-  <li>Glissez ceci dans votre barre de favoris : <a id="bookmarkletLink" href="#">Superposition en direct</a></li>
-        <li>Visitez n’importe quelle page et cliquez sur le bookmarklet.</li>
-        <li>Importez votre PNG Figma et alignez‑le à l’aide des contrôles.</li>
-      </ol>
-      <details>
-        <summary>À quoi ça sert ?</summary>
-        <p>Il injecte une petite interface dans la page (entièrement côté navigateur). Vous pouvez positionner, mettre à l’échelle et changer le mode de fusion de votre PNG pour comparer le design et le rendu.</p>
-      </details>
-      <div class="tip">Astuce : flèches pour déplacer (Maj = 10 px), +/- pour l’échelle, D pour le mode difference, Échap pour fermer.</div>
-    </section>
-
-    <section id="image-diff" class="tabpanel" role="tabpanel" aria-hidden="true">
-      <h2>Comparaison Image ↔ Image (Diff pixel)</h2>
-      <div class="dropzones">
-        <div class="dropzone" data-side="A">
-          <p>PNG de design (depuis Figma)</p>
-          <button type="button" class="btn secondary pick">Choisir une image</button>
-          <small class="fname"></small>
-          <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" />
-          <img alt="Aperçu image A" />
-        </div>
-        <div class="dropzone" data-side="B">
-          <p>Capture d’écran PNG/JPG</p>
-          <button type="button" class="btn secondary pick">Choisir une image</button>
-          <small class="fname"></small>
-          <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" />
-          <img alt="Aperçu image B" />
-        </div>
-      </div>
-      <div class="controls-row">
-  <label>Mode <select id="diffMode"><option value="pixel">Pixel (rapide)</option><option value="ssim">SSIM (perceptuel)</option></select> <span class="help" title="SSIM: mesure de similarité structurelle (plus proche de la perception humaine)">i</span></label>
-  <label><span id="thresholdLabelText">Seuil</span> <input id="threshold" type="range" min="0" max="100" value="8" /> <span id="thresholdVal">8%</span></label>
-  <label>Couleur de surbrillance <input id="diffColor" type="color" value="#ff0055" /></label>
-  <label><input type="checkbox" id="lumaOnly" /> Luminance seule <span class="help" aria-label="Aide" title="Compare uniquement la luminosité (Y). Réduit les écarts de teinte mineurs, utile pour le texte.">i</span></label>
-  <label><input type="checkbox" id="blur1" /> Lisser (1 px) <span class="help" aria-label="Aide" title="Applique un léger flou (1 px) avant la comparaison pour atténuer l’anticrénelage.">i</span></label>
-  <label><input type="checkbox" id="edgeTol" /> Tolérance bords (AA) <span class="help" aria-label="Aide" title="Augmente la tolérance près des bords forts (anticrénelage) pour réduire les faux positifs.">i</span></label>
-        <button id="runDiff">Lancer le diff</button>
-        <button id="swapImages">Inverser</button>
-        <button id="clearImages">Effacer</button>
-        <button id="maskToggle" class="btn secondary" type="button">Ignorer une zone</button>
-        <button id="maskClear" class="btn secondary" type="button">Effacer zones ignorées</button>
-  <button id="resetPrefs" class="btn secondary" type="button">Réinitialiser préférences</button>
-        <button id="downloadDiff" class="btn secondary" type="button">Télécharger le diff</button>
-      </div>
-  <div id="diffStatus" class="tip" aria-live="polite" style="display:none"></div>
-      <div id="diffContainer" class="diff-wrap">
-        <canvas id="diffCanvas" class="canvas" aria-label="Résultat du diff"></canvas>
-        <canvas id="maskCanvas" class="mask-canvas" aria-label="Masques de zones ignorées"></canvas>
-      </div>
-  <div class="tip">Déposez deux images ou utilisez les sélecteurs. L’aperçu sous chaque zone montre l’image chargée. Utilisez « Ignorer une zone » pour dessiner un rectangle exclu de la comparaison. Le diff met en évidence les pixels qui diffèrent au‑delà du seuil choisi.</div>
-  <div class="tip"><strong>Conseils</strong> : Texte fin → Luminance + Lisser (1 px) + seuil 8–15%. Icônes/solides → Mode Pixel, tolérance bords off, seuil bas. Visuel global → Mode SSIM.</div>
-    </section>
-  </main>
-
-  <footer class="container small">
-  <p>Tout se passe dans votre navigateur. Aucune donnée n’est envoyée.</p>
-  </footer>
-
-  <script id="visdiff-bookmarklet-code" type="text/plain">
 (()=>{if(window.__VIS_DIFF__&&window.__VIS_DIFF__.open){window.__VIS_DIFF__.open();return}const d=document;const st=d.createElement('style');st.textContent=`
 .visdiff-overlay-root{position:fixed;inset:0;pointer-events:none;z-index:2147483647}
 .visdiff-panel{position:fixed;top:16px;right:16px;background:var(--ov-panel);color:var(--ov-text);border:1px solid var(--ov-border);border-radius:10px;padding:10px;min-width:320px;pointer-events:auto;box-shadow:0 6px 24px rgba(0,0,0,.35);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
@@ -114,8 +14,7 @@
 .visdiff-btn.danger{border-color:var(--ov-danger-border);background:var(--ov-danger-bg);color:#ffc8d7}
 .visdiff-stage{position:fixed;inset:0;pointer-events:none}
 .visdiff-floating{position:absolute;left:0;top:0;transform-origin:top left;pointer-events:auto;cursor:move;touch-action:none}
-.visdiff-floating img{display:block;max-width:none;border:3px solid var(--ov-accent);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.35);}
-.visdiff-floating::after{content:"";position:absolute;left:-8px;top:-8px;right:-8px;bottom:-8px;border-radius:10px;pointer-events:none;box-shadow:0 0 0 6px color-mix(in srgb, var(--ov-accent) 16%, transparent);}
+.visdiff-floating img{display:block;max-width:none;border:1px dotted var(--ov-accent)}
 .visdiff-hidden{display:none !important}
 .visdiff-grid{position:fixed;inset:0;pointer-events:none;--s:8px;--o:.2;--c:var(--ov-grid-rgba, rgba(122,162,255,.6));background-image:repeating-linear-gradient(0deg,var(--c) 0 1px,transparent 1px,var(--s)),repeating-linear-gradient(90deg,var(--c) 0 1px,transparent 1px,var(--s));opacity:var(--o)}
 .visdiff-loupe{position:fixed;width:160px;height:160px;border:2px solid var(--ov-accent);border-radius:50%;overflow:hidden;pointer-events:none;box-shadow:0 4px 18px rgba(0,0,0,.4);z-index:2147483647}
@@ -125,11 +24,40 @@
 .visdiff-reopen{position:fixed;top:16px;right:16px;background:var(--ov-reopen-bg);border:1px solid var(--ov-reopen-border);color:var(--ov-text);border-radius:999px;padding:6px 10px;pointer-events:auto;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.35);}
 .visdiff-crop-layer{position:fixed;inset:0;cursor:crosshair;pointer-events:auto;background:rgba(0,0,0,.25);z-index:2147483646}
 .visdiff-crop-rect{position:absolute;border:2px dashed var(--ov-accent);background:rgba(0,135,62,.12)}
+@media (max-width: 600px) {
+  .visdiff-panel { min-width: auto; width: 90vw; right: 5vw; left: 5vw; top: 10px; font-size: 13px; }
+  .visdiff-row input[type=range] { width: 80px; }
+  .visdiff-row input[type=number] { width: 60px; }
+  .visdiff-buttons { flex-direction: column; gap: 4px; align-items: stretch; }
+  .visdiff-btn { width: 100%; text-align: center; }
+  .visdiff-reopen { right: 10px; }
+}`;
 `;d.documentElement.appendChild(st);
 const root=d.createElement('div');root.className='visdiff-overlay-root visdiff-hidden';
 const stage=d.createElement('div');stage.className='visdiff-stage';root.appendChild(stage);
 const grid=d.createElement('div');grid.className='visdiff-grid visdiff-hidden';stage.appendChild(grid);
-const float=d.createElement('div');float.className='visdiff-floating';const img=d.createElement('img');img.alt='Overlay';float.appendChild(img);stage.appendChild(float);
+const float=d.createElement('div');float.className='visdiff-floating';const img=d.createElement('img');img.alt='Overlay';
+// Visual highlight: thicker blue border + subtle shadow to distinguish overlay from page
+img.style.border='3px solid var(--ov-accent)';
+img.style.borderRadius='6px';
+img.style.boxShadow='0 8px 24px rgba(0,0,0,.35)';
+// Add semi-transparent contour outside the image using a wrapper pseudo-like element
+const contour = d.createElement('div');
+contour.style.position = 'absolute';
+contour.style.left = '-8px';
+contour.style.top = '-8px';
+contour.style.right = '-8px';
+contour.style.bottom = '-8px';
+contour.style.borderRadius = '10px';
+contour.style.pointerEvents = 'none';
+contour.style.boxShadow = '0 0 0 6px rgba(122,162,255,0.16)';
+// Wrap image so contour sits behind the border visually
+const wrapper = d.createElement('div');
+wrapper.style.position = 'relative';
+wrapper.style.display = 'inline-block';
+wrapper.appendChild(contour);
+wrapper.appendChild(img);
+float.appendChild(wrapper);stage.appendChild(float);
 const loupe=d.createElement('div');loupe.className='visdiff-loupe visdiff-hidden';const lImg=d.createElement('img');loupe.appendChild(lImg);stage.appendChild(loupe);
 const handle=d.createElement('div');handle.className='visdiff-handle visdiff-hidden';const knob=d.createElement('div');knob.className='visdiff-knob';handle.appendChild(knob);stage.appendChild(handle);
 // Crop layer (for area selection)
@@ -321,97 +249,3 @@ async function snapshotFullPage(){
 }
 load();autoChk.checked=autoUI; apply();openUI();
 window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
-  </script>
-
-  <script>
-    // Setup bookmarklet href at runtime to keep it readable in repo.
-    (function(){
-      // Use inline injector so it works even when this file is opened via file://
-      const code = document.getElementById('visdiff-bookmarklet-code').textContent.trim();
-      const href = 'javascript:'+encodeURIComponent(code);
-      const a = document.getElementById('bookmarkletLink');
-      const aTop = document.getElementById('bookmarkletLinkTop');
-      a.setAttribute('href', href);
-      aTop.setAttribute('href', href);
-      // Copy to clipboard for users qui ne peuvent pas glisser
-      document.getElementById('copyBookmarklet').addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(href); alert('Bookmarklet copié dans le presse‑papiers. Collez‑le comme URL d’un nouveau favori.'); }
-        catch { alert('Impossible de copier automatiquement. Copiez le lien manuellement.'); }
-      });
-      // Demo here: mounts the overlay sur cette même page
-      document.getElementById('demoHere').addEventListener('click', () => {
-        // exécute le code du bookmarklet localement
-        // eslint-disable-next-line no-eval
-        eval(code);
-      });
-    })();
-
-    // Theme select with persistence (includes "Desjardins" palette)
-    (function(){
-      const key = 'VD::theme';
-      const sel = document.getElementById('themeSelect');
-      const root = document.documentElement;
-      const mql = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-      function applyTheme(t){
-        let applied = t;
-        if(t==='auto'){
-          const isDark = mql && mql.matches;
-          applied = isDark ? 'dark' : 'light';
-        }
-        if(applied==='light'){ root.setAttribute('data-theme','light'); }
-        else if(applied==='desjardins'){ root.setAttribute('data-theme','desjardins'); }
-        else { root.removeAttribute('data-theme'); }
-        if(sel){ sel.value = t || 'dark'; }
-      }
-      let saved = null; try{ saved = localStorage.getItem(key); }catch(_){ }
-      // Default to Desjardins if none set, per request
-      const initial = saved || 'desjardins';
-      applyTheme(initial);
-      if(mql){ mql.addEventListener('change', ()=>{ const t = (sel && sel.value) || initial; if(t==='auto'){ applyTheme('auto'); } }); }
-      if(sel){ sel.addEventListener('change', ()=>{ const t = sel.value; applyTheme(t); try{ localStorage.setItem(key, t); }catch(_){} }); }
-    })();
-
-    // Tabs logic
-    const tabs = document.querySelectorAll('.tab');
-    const panels = document.querySelectorAll('.tabpanel');
-    tabs.forEach(btn => btn.addEventListener('click', () => {
-      tabs.forEach(b => { b.classList.toggle('active', b===btn); b.setAttribute('aria-selected', b===btn); });
-      panels.forEach(p => { p.classList.toggle('active', p.id===btn.dataset.tab); p.setAttribute('aria-hidden', p.id!==btn.dataset.tab); });
-    }));
-    // Image diff: download
-    (function(){
-      const btn = document.getElementById('downloadDiff');
-      const canvas = document.getElementById('diffCanvas');
-      if(btn){ btn.addEventListener('click', ()=>{
-        try { const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='diff.png'; a.click(); }
-        catch(e){ alert('Téléchargement impossible: '+e); }
-      }); }
-    })();
-
-    // Image diff: custom file pickers
-    (function(){
-      document.querySelectorAll('.dropzone').forEach(dz=>{
-        const pick = dz.querySelector('.pick');
-        const input = dz.querySelector('input[type=file]');
-        const fname = dz.querySelector('.fname');
-        if(pick && input){
-          pick.addEventListener('click',()=>{ try{ input.value=''; }catch(_){} input.click(); });
-          input.addEventListener('change',()=>{ fname.textContent = input.files && input.files[0] ? input.files[0].name : ''; });
-        }
-      });
-    })();
-
-    // Remove sticky pressed state for buttons and link-buttons in main UI
-    (function(){
-      const unpress = (e)=>{ const el = e.target && (e.target.closest('button, a.btn, .btn, .pick, .tab, #bookmarkletLink, #bookmarkletLinkTop')); if(el){ try{ el.blur(); }catch(_){} } };
-      document.addEventListener('mouseup', unpress);
-      document.addEventListener('click', unpress);
-      document.addEventListener('keyup', (e)=>{ if(e.key==='Enter' || e.key===' '){ unpress(e); } });
-    })();
-  </script>
-</body>
-<!--
-  Note: injector.min.js is a tiny, self-contained version of overlay controls to load via bookmarklet.
-  For local file:// usage, some browsers block javascript: URLs dragging. If so, host via a local server or GitHub Pages.
--->
-</html>
