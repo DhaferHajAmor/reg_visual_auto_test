@@ -97,6 +97,91 @@
         return {A,B};
       }
     }
+    ,
+    // ----------------------
+    // Exemples style Desjardins (synthétiques) – pas d'actifs réels du site
+    // Objectif: reproduire des patterns typiques (couleurs, blocs, boutons) et introduire
+    // de petites divergences pour démontrer le diff.
+    {
+      id:'dj-couleur-prim',
+      label:'Desjardins – Teinte primaire',
+      note:'Léger écart de vert (#007A33 vs #088238).',
+      gen:()=>{
+        const A=mkCanvas(), B=mkCanvas(); const a=A.getContext('2d'), b=B.getContext('2d'); bg(a); bg(b);
+        // En-tête
+        a.fillStyle='#007A33'; a.fillRect(0,40,600,70);
+        b.fillStyle='#088238'; b.fillRect(0,40,600,70);
+        // Titre
+        a.fillStyle='#0b0e1a'; a.font='bold 40px system-ui'; a.fillText('Compte Épargne', 40, 150);
+        b.fillStyle='#0b0e1a'; b.font='bold 40px system-ui'; b.fillText('Compte Épargne', 40, 150);
+        return {A,B};
+      }
+    },
+    {
+      id:'dj-espacement',
+      label:'Desjardins – Espacement',
+      note:'Boutons décalés verticalement (padding différent).',
+      gen:()=>{
+        const A=mkCanvas(), B=mkCanvas(); const a=A.getContext('2d'), b=B.getContext('2d'); bg(a); bg(b);
+        function header(ctx){ ctx.fillStyle='#007A33'; ctx.fillRect(0,0,600,56);} header(a); header(b);
+        a.fillStyle='#ffffff'; a.font='24px system-ui'; a.fillText('Tableau de bord', 24, 38);
+        b.fillStyle='#ffffff'; b.font='24px system-ui'; b.fillText('Tableau de bord', 24, 38);
+        function btn(ctx,x,y,w,h,r,color){ ctx.fillStyle=color; ctx.beginPath(); ctx.roundRect?ctx.roundRect(x,y,w,h,r):ctx.fillRect(x,y,w,h); ctx.fill(); }
+        // A : baseline
+        btn(a,40,120,200,46,8,'#007A33');
+        btn(a,260,120,140,46,8,'#005A26');
+        // B : boutons 4px plus bas + 2px de différence hauteur sur le 2e
+        btn(b,40,124,200,46,8,'#007A33');
+        btn(b,260,124,140,44,8,'#005A26');
+        a.fillStyle='#fff'; a.font='20px system-ui'; a.fillText('Ouvrir', 95, 151);
+        b.fillStyle='#fff'; b.font='20px system-ui'; b.fillText('Ouvrir', 95, 155);
+        a.fillText('Détails', 300, 151);
+        b.fillText('Détails', 300, 153);
+        return {A,B};
+      }
+    },
+    {
+      id:'dj-rayon-bord',
+      label:'Desjardins – Rayon de bordure',
+      note:'Cartes avec radius 8px vs 4px + petite variation d’ombre.',
+      gen:()=>{
+        const A=mkCanvas(), B=mkCanvas(); const a=A.getContext('2d'), b=B.getContext('2d'); bg(a); bg(b);
+        function card(ctx,x,y,w,h,r,shadow){ ctx.save(); if(shadow){ ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(x+4,y+4,w,h); } ctx.fillStyle='#ffffff'; ctx.beginPath(); if(ctx.roundRect){ ctx.roundRect(x,y,w,h,r); ctx.fill(); } else { ctx.fillRect(x,y,w,h); } ctx.restore(); }
+        // A radius 8
+        card(a,60,80,200,160,8,true); card(a,340,80,200,160,8,true);
+        // B radius 4 + ombre plus légère
+        card(b,60,80,200,160,4,false); card(b,340,80,200,160,4,false);
+        a.fillStyle='#0b0e1a'; a.font='18px system-ui'; a.fillText('Carte Produits', 78, 120);
+        b.fillStyle='#0b0e1a'; b.font='18px system-ui'; b.fillText('Carte Produits', 78, 120);
+        return {A,B};
+      }
+    },
+    {
+      id:'dj-icones-aligne',
+      label:'Desjardins – Alignement icônes',
+      note:'Icônes décalées de 1px et teinte altérée.',
+      gen:()=>{
+        const A=mkCanvas(), B=mkCanvas(); const a=A.getContext('2d'), b=B.getContext('2d'); bg(a); bg(b);
+        function item(ctx,x,y,shift,color){ ctx.fillStyle=color; ctx.beginPath(); ctx.arc(x+24+shift,y+24,24,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#ffffff'; ctx.font='bold 18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('i', x+24+shift, y+24); }
+        for(let i=0;i<3;i++){ item(a,60 + i*170,110,0,'#007A33'); item(b,60 + i*170,110, i===1?1:0, i===1?'#0a8438':'#007A33'); }
+        a.fillStyle='#0b0e1a'; a.font='20px system-ui'; a.fillText('Services', 60, 90);
+        b.fillStyle='#0b0e1a'; b.font='20px system-ui'; b.fillText('Services', 60, 90);
+        return {A,B};
+      }
+    },
+    {
+      id:'dj-typographie',
+      label:'Desjardins – Typographie',
+      note:'Différence de graisse et légère variation de tracking simulée.',
+      gen:()=>{
+        const A=mkCanvas(), B=mkCanvas(); const a=A.getContext('2d'), b=B.getContext('2d'); bg(a); bg(b);
+        a.fillStyle='#0b0e1a'; a.font='600 42px system-ui'; a.fillText('Épargne durable', 40, 120);
+        // B : plus gras + chaque lettre décalée +0.2px (tracking simulé)
+        b.fillStyle='#0b0e1a'; b.font='700 42px system-ui';
+        const text='Épargne durable'; let x=40; for(const ch of text){ b.fillText(ch, x, 120); x+= a.measureText(ch).width + 0.2; }
+        return {A,B};
+      }
+    }
   ];
 
   // Build UI

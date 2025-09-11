@@ -1,121 +1,110 @@
 # Visual Diff — Zéro‑installation
 
-Outil simple et 100% navigateur pour comparer un PNG (depuis Figma) au rendu d’une page web via un bookmarklet, ou comparer deux images avec un diff pixel. Aucune installation requise.
+Outil 100% navigateur pour :
+1. Superposer rapidement un PNG (Figma / design) sur n’importe quelle page via un bookmarklet.
+2. Comparer deux images (design ↔ capture) avec diff pixel ou perceptuel (SSIM).
 
-## Démarrage rapide
+Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
 
-1) Ouvrez `index.html` dans votre navigateur.
-2) Dans l’en‑tête, glissez le lien « Superposition en direct » dans votre barre de favoris, ou cliquez « Copier le bookmarklet » pour créer manuellement un favori.
-3) Allez sur la page à vérifier, cliquez le favori « Superposition en direct », importez votre PNG Figma et alignez‑le.
-4) Optionnel : dans l’onglet « Image ↔ Image », déposez deux images (design + capture) et lancez le diff.
+## Fonctionnalités principales
+- Superposition temps réel (opacité, position, échelle, modes de fusion CSS, grille, loupe, curseur avant/après, export, capture).
+- Grille paramétrable (pas, opacité, couleur).
+- Loupe haute fidélité (zoom jusqu’à 8×, image-rendering pixelated).
+- Curseur « avant / après » (split dynamique ajustable).
+- Export du viewport avec overlay, capture ponctuelle ou zone sélectionnée, capture plein‑page (scroll & stitch best‑effort).
+- Mode difference avec auto‑max de l’opacité (retour à la valeur précédente en quittant difference).
+- Thèmes intégrés overlay : Auto (système), Sombre, Desjardins (avec palette personnalisée).
+- Persistance par domaine (overlay) + persistance globale des préférences diff.
+- Mode Image ↔ Image : Pixel diff rapide ou SSIM (approx. perceptuel), masques exclusifs multi‑zones, réglages anti faux positifs.
 
-## Superposition (bookmarklet)
-- Importer une image : choisissez votre PNG (Figma) à superposer.
-- Opacité : transparence de l’image.
-- Échelle : agrandit/réduit pour s’aligner au rendu.
-- X / Y : position (px) sur la page.
-- Fusion : mode de fusion (normal, difference, multiply, etc.).
-- Grille : aide à l’alignement.
-	- Pas (px), Opacité, Couleur.
-	(La “Couleur” concerne uniquement le quadrillage d’alignement.)
-- Loupe : loupe circulaire pixelisée.
-	- Taille, Zoom.
-- Curseur (avant/après) : split vertical entre overlay et page.
-	- Position (% largeur).
-- Exporter l’overlay : télécharge un PNG de l’overlay visible dans le viewport (respecte le split).
-- Capture (invite) : ouvre l’API de capture d’écran du navigateur et enregistre un PNG (fenêtre/écran choisis).
-- Masquer : cache/affiche l’image superposée.
-- UI on/off : affiche/masque le panneau (si masqué, utilisez le bouton « Afficher le panneau » en haut‑droite ou la touche H pour le réafficher).
-- Auto‑masquer le panneau : cache automatiquement le panneau quand la souris le quitte; un bouton « Afficher le panneau » permet de le rouvrir.
-- Réinitialiser : valeurs par défaut.
-- Fermer : quitte l’overlay.
+## Mise en route
+1. Ouvrir `index.html` dans un navigateur moderne (Chrome, Firefox, Edge, Safari récents).
+2. Glisser le lien « Superposition en direct » vers la barre de favoris. (Sinon « Copier le bookmarklet » puis créer un favori avec l’URL copiée.)
+3. Aller sur la page à auditer et cliquer le favori.
+4. Importer un PNG, ajuster avec les contrôles.
+5. (Optionnel) Onglet « Image ↔ Image » pour diff hors page.
 
-### Raccourcis (overlay)
-- Flèches : déplacer (Maj = 10 px)
-- + / − : échelle fine (Maj = plus rapide)
-- D : mode difference
-- G : grille on/off
-- L : loupe on/off
-- S : curseur on/off
-- X : exporter l’overlay
-- P : capture (invite)
-- H : panneau on/off
-- U : auto‑masquer panneau on/off
-- Échap : fermer
+## Exemples / Jeux d’essai
+- Page d’exemples générés : ouvrir `examples/examples.html` pour télécharger des paires A/B.
+- Inclut maintenant une section « style Desjardins » synthétique (couleurs vertes, cartes, boutons) avec micro‑variations (teinte, radius, espacement, alignement, graisse, tracking) afin de produire des différences visibles.
+- Aucune ressource réelle ni capture du site desjardins.com n’est incluse : tout est généré en canvas local.
+- Utilisation : télécharger A et B puis charger dans l’onglet « Image ↔ Image » ou utiliser A comme overlay sur une page neutre.
 
-## Image ↔ Image (diff pixel ou perceptuel)
-- Zones A & B : déposez ou sélectionnez deux images (A = design Figma, B = capture d’écran).
-- Mode : Pixel (rapide) ou SSIM (perceptuel, plus proche de l’œil humain).
-- Seuil : affiché en pourcentage (0–100%). En mode Pixel, plus le pourcentage est bas, plus c’est sensible; en mode SSIM, c’est le niveau de similarité minimale.
-- Options anti “faux positifs” :
-	- Luminance seule : ignore les différences de teinte mineures (utile pour le texte).
-	- Lisser (1 px) : petit flou avant comparaison pour atténuer l’anticrénelage.
-	- Tolérance bords (AA) : moins strict près des contours forts.
-- Masques (Ignorer une zone) : dessinez un ou plusieurs rectangles à exclure de la comparaison; déplacez-les, supprimez-en un via Cmd/Ctrl+clic. Les masques sont mémorisés et ré‑adaptés si la taille du canvas change.
-- Réinitialiser préférences : remet le seuil, la couleur et les options par défaut.
-- Lancer le diff : calcule et affiche la carte des différences.
-- Inverser : échange A et B (y compris les noms affichés).
-- Effacer : vide images, masques et rendu.
-- Télécharger le diff : exporte le canvas en PNG.
+## Panneau de superposition (contrôles)
+- Importer : choisir l’image overlay (PNG / JPEG / WebP).
+- Opacité / Échelle / X / Y.
+- Fusion : normal, multiply, screen, overlay, difference, etc.
+- Grille : activer + Pas / Opacité / Couleur.
+- Loupe : activer + Taille + Zoom.
+- Curseur (split) : activer + Position.
+- Auto‑masquer : cache le panneau après sortie souris (réafficher via bouton rond). 
+- Export overlay : PNG du viewport (tient compte du split).
+- Ajuster au viewport, Centrer, Masquer image, Réinitialiser, Fermer.
+- Thème : Auto / Sombre / Desjardins (en haut‑droite du panneau).
 
-## Confidentialité
-- Tout se passe localement, dans votre navigateur. Aucune donnée n’est envoyée.
-- Les réglages (position, échelle, grille, loupe, curseur…) ainsi que les préférences du diff et les masques sont mémorisés localement (par site pour le bookmarklet, globalement pour le diff).
+## ⌨️ Raccourcis (overlay)
+| Touche | Action |
+| ------ | ------ |
+| Flèches | Déplacer (Maj = 10 px) |
+| + / − | Zoom (Maj = plus rapide) |
+| D | Difference on/off |
+| G | Grille on/off |
+| L | Loupe on/off |
+| S | Curseur split on/off |
+| X | Export overlay |
+| P | Capture (invite / zone / plein‑page selon séquence) |
+| H | Panneau on/off |
+| U | Auto‑masque panneau on/off |
+| Échap | Fermer overlay |
 
-## Limitations
-- Par sécurité, on ne peut pas automatiser la capture d’un site sans extension/serveur. L’overlay permet une comparaison précise en direct.
-- Rarement, certaines politiques de sécurité (CSP) peuvent bloquer les bookmarklets. Dans ce cas, utilisez l’onglet « Image ↔ Image ».
+##  Mode Image ↔ Image
+- A (design) + B (capture) : déposer / choisir.
+- Mode : Pixel (rapide) ou SSIM (structure perceptuelle).
+- Seuil : sensibilité (affiché %).
+- Options : Luminance seule, Lisser (1 px), Tolérance bords (AA).
+- Masques exclus : dessiner rectangles à ignorer (multi‑zones). 
+- Inverser / Effacer / Télécharger diff / Réinitialiser préférences.
 
-## Publication (facultatif)
-- Hébergez ce dossier en statique (GitHub Pages, Netlify, Vercel…).
-- Partagez l’URL ; les utilisateurs peuvent glisser le lien « Superposition en direct » directement depuis la page.
+##  Persistance
+- Overlay : paramètres stockés par hôte (`localStorage` clé par domaine).
+- Thème : `VD::theme` (valeurs `dark`, `desjardins`, `auto`). 
+- Diff images : préférences globales (seuil, options, couleur, masques en relatif si applicable).
 
-	## Guide utilisateur (FR)
+##  Confidentialité
+Tout reste local. Aucune requête réseau générée par les fonctionnalités (hors APIs navigateur standard comme capture d’écran si autorisée par l’utilisateur).
 
-	Superposition (bookmarklet)
-	- Importer une image: sélectionnez votre PNG (Figma) à superposer sur la page.
-	- Opacité: rend l’image plus/moins transparente pour voir le site derrière.
-	- Échelle: agrandit/réduit l’image pour l’aligner au rendu réel.
-	- X / Y: positionne précisément l’image (en pixels) sur l’axe horizontal/vertical.
-	- Fusion: mode de fusion CSS (normal, difference, multiply…) pour révéler les écarts.
-	- Grille: active/désactive l’aide à l’alignement.
-		- Pas: distance entre les lignes (px).
-		- Opacité: transparence de la grille.
-		- Couleur: couleur des lignes.
-	- Loupe: active une loupe circulaire près du pointeur.
-		- Taille: diamètre de la loupe.
-		- Zoom: niveau d’agrandissement pour inspecter les pixels.
-	- Curseur (avant/après): split vertical pour comparer overlay vs page.
-		- Position: place la séparation (en % de la largeur).
-	- Exporter l’overlay: exporte un PNG du viewport avec l’overlay (respecte le split si actif).
-	- Capture (invite): ouvre l’invite de capture d’écran du navigateur et enregistre une image PNG de l’écran/fenêtre choisie.
-	- Masquer: cache/affiche l’image superposée (le panneau reste visible).
-	- UI on/off: affiche/masque le panneau de contrôle (quand il est masqué, cliquez sur « Afficher le panneau » en haut‑droite ou pressez H pour le rouvrir).
-	- Auto‑masquer le panneau: masque automatiquement le panneau quand la souris le quitte; un petit bouton « Afficher le panneau » ré‑ouvre le panneau.
-	- Réinitialiser: remet tous les réglages par défaut.
-	- Fermer: ferme complètement l’overlay et le panneau.
+## Limitations / Notes
+- Politiques CSP strictes peuvent empêcher un bookmarklet (rare). Solution : mode Image ↔ Image.
+- Capture plein‑page dépend des limites d’API (peut être incomplète sur pages complexes ou animations fortes).
+- Les grandes images ou zooms extrêmes peuvent impacter les performances (limiter > 8k de large).
 
-	Raccourcis clavier (overlay)
-	- Flèches: déplacer (Maj = 10 px).
-	- + / −: changer l’échelle finement (Maj = plus rapide).
-	- D: basculer le mode “difference”.
-	- G: activer/désactiver la grille.
-	- L: activer/désactiver la loupe.
-	- S: activer/désactiver le curseur (avant/après).
-	- X: exporter l’overlay en PNG.
-	- P: ouvrir l’invite de capture d’écran.
-	- H: afficher/masquer le panneau.
-	- U: activer/désactiver l’auto‑masquage du panneau.
-	- Échap: fermer l’overlay.
+## Développement
+Structure clé :
+- `index.html` : page de démonstration + code plain‑text du bookmarklet (source lisible).
+- `scripts/injector.js` : version script autonome (même logique).
+- (Option) `scripts/injector.min.js` : peut être régénéré (non automatisé ici).
 
-	Image ↔ Image (diff pixel)
-	- Zones A/B: déposez ou choisissez deux images (A = design Figma, B = capture d’écran).
-	- Seuil: sensibilité du diff (0 = très sensible, 255 = peu sensible).
-	- Couleur de surbrillance: couleur utilisée pour marquer les pixels différents.
-	- Lancer le diff: calcule et affiche la carte des différences.
-	- Inverser: échange les images A et B.
-	- Effacer: vide les images et réinitialise la zone de rendu.
+Éditer la logique overlay : modifier à la fois le bloc bookmarklet dans `index.html` et `scripts/injector.js` pour rester aligné.
 
-	Notes
-	- Tout se passe localement dans le navigateur (aucun envoi de données).
-	- Les paramètres (position, échelle, grille, loupe, curseur…) sont mémorisés automatiquement par site.
+### Minification (suggestion)
+Outils possibles : esbuild, terser. Exemple (à adapter) :
+```
+esbuild scripts/injector.js --minify --outfile=scripts/injector.min.js
+```
+
+### Roadmap potentielle
+- Option d’opacité adaptative sur difference.
+- Mode de comparaison « par couches » (pile de versions).
+- Export diff « overlay + page » combiné.
+- Génération automatique du bookmarklet depuis un build.
+
+##  Tests manuels rapides
+- Charger overlay deux fois sur la même page : pas de doublon (réutilise état).
+- Importer deux fois le même fichier : rechargé immédiatement (input recréé à chaque clic).
+- Basculer difference : opacité passe à 100%, revenir restaure ancienne opacité.
+- Thème Auto puis changer thème système : réinjection reflète le changement.
+
+## 📄 Licence
+DPSNI
+---
+Retour / idées bienvenus : ouvrez une issue ou proposez une PR.
