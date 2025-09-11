@@ -124,6 +124,14 @@
 .visdiff-reopen{position:fixed;top:16px;right:16px;background:var(--ov-reopen-bg);border:1px solid var(--ov-reopen-border);color:var(--ov-text);border-radius:999px;padding:6px 10px;pointer-events:auto;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.35);}
 .visdiff-crop-layer{position:fixed;inset:0;cursor:crosshair;pointer-events:auto;background:rgba(0,0,0,.25);z-index:2147483646}
 .visdiff-crop-rect{position:absolute;border:2px dashed var(--ov-accent);background:rgba(0,135,62,.12)}
+@media (max-width: 600px) {
+  .visdiff-panel { min-width: auto; width: 90vw; right: 5vw; left: 5vw; top: 10px; font-size: 13px; }
+  .visdiff-row input[type=range] { width: 80px; }
+  .visdiff-row input[type=number] { width: 60px; }
+  .visdiff-buttons { flex-direction: column; gap: 4px; align-items: stretch; }
+  .visdiff-btn { width: 100%; text-align: center; }
+  .visdiff-reopen { right: 10px; }
+}`;
 `;d.documentElement.appendChild(st);
 const root=d.createElement('div');root.className='visdiff-overlay-root visdiff-hidden';
 const stage=d.createElement('div');stage.className='visdiff-stage';root.appendChild(stage);
