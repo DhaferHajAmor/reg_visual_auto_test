@@ -42,9 +42,12 @@
   // Swap & Clear now enabled as soon as both images are loaded (even before first diff)
   setBlocked(swapBtn, !bothLoaded);
   setBlocked(clearBtn, !bothLoaded);
-  // Mask actions still require a diff run (can refine later to require differences if desired)
-  [maskToggle, maskClear].forEach(b=>setBlocked(b, !hasDiff));
-    setBlocked(downloadBtn, !(hasDiff && hasDiffPixels));
+  // Mask add toggle requires a diff WITH visual differences; clear requires at least one mask
+  const diffWithPixels = hasDiff && hasDiffPixels;
+  setBlocked(maskToggle, !diffWithPixels);
+  setBlocked(maskClear, !(diffWithPixels && masks && masks.length>0));
+  // Download also only when there are differing pixels
+  setBlocked(downloadBtn, !(hasDiff && hasDiffPixels));
   // Reset preferences must always remain active regardless of state
   setBlocked(resetPrefsBtn, false);
   }
@@ -99,7 +102,7 @@
   function drawMasks(){ if(!mctx) return; mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); mctx.save(); mctx.fillStyle = 'rgba(255,255,255,0.25)'; mctx.strokeStyle = 'rgba(255,255,255,0.6)'; mctx.lineWidth = 1.5; masks.forEach((r,idx)=>{ mctx.fillRect(r.x,r.y,r.w,r.h); mctx.strokeRect(r.x,r.y,r.w,r.h); if(idx===selectedIndex){ mctx.strokeStyle='rgba(122,162,255,0.9)'; mctx.setLineDash([6,4]); mctx.strokeRect(r.x-2,r.y-2,r.w+4,r.h+4); mctx.setLineDash([]); mctx.strokeStyle='rgba(255,255,255,0.6)'; } }); mctx.restore(); }
   function pointInRect(x,y,r){ return x>=r.x && y>=r.y && x<r.x+r.w && y<r.y+r.h; }
   function saveMasks(){ try{ localStorage.setItem(MASK_KEY, JSON.stringify({ w: canvas.width, h: canvas.height, rects: masks })); }catch(_){} }
-  function restoreMasksForSize(w,h){ try{ const saved = JSON.parse(localStorage.getItem(MASK_KEY)||'null'); if(!saved||!saved.rects){ drawMasks(); return; } const sx = saved.w? (w/saved.w):1; const sy = saved.h? (h/saved.h):1; masks.length=0; saved.rects.forEach(r=>masks.push({ x: Math.round(r.x*sx), y: Math.round(r.y*sy), w: Math.round(r.w*sx), h: Math.round(r.h*sy) })); drawMasks(); }catch(_){ drawMasks(); } }
+  function restoreMasksForSize(w,h){ try{ const saved = JSON.parse(localStorage.getItem(MASK_KEY)||'null'); if(!saved||!saved.rects){ drawMasks(); updateButtons(); return; } const sx = saved.w? (w/saved.w):1; const sy = saved.h? (h/saved.h):1; masks.length=0; saved.rects.forEach(r=>masks.push({ x: Math.round(r.x*sx), y: Math.round(r.y*sy), w: Math.round(r.w*sx), h: Math.round(r.h*sy) })); drawMasks(); updateButtons(); }catch(_){ drawMasks(); updateButtons(); } }
 
   let running = false;
   function runDiff(){
@@ -329,11 +332,11 @@
   // (maskToggle, maskClear already defined above)
   if(maskCanvas && maskToggle){
     maskToggle.addEventListener('click', ()=>{
-      if(!hasDiff){
+      if(!(hasDiff && hasDiffPixels)){
         if(diffStatus){
-          diffStatus.textContent='⚠️ Lancez un diff (deux images + "Lancer le diff") avant de définir des zones ignorées.';
+          diffStatus.textContent='⚠️ Les zones ignorées ne sont disponibles que si un diff avec des différences est affiché.';
           diffStatus.style.display='block'; diffStatus.style.color='#b26b00';
-        } else { alert('Lancez un diff avant d\'utiliser les zones ignorées.'); }
+        } else { alert('Aucune différence visuelle : les zones ignorées sont inactives.'); }
         return;
       }
       drawing = !drawing; selectedIndex = -1; moving = false;
@@ -344,11 +347,11 @@
   updateButtons();
     });
   maskClear && maskClear.addEventListener('click', ()=>{ 
-      if(!hasDiff){
+      if(!(hasDiff && hasDiffPixels)){
         if(diffStatus){
-          diffStatus.textContent='⚠️ Rien à effacer : aucun diff généré.';
+          diffStatus.textContent='⚠️ Rien à effacer : soit aucun diff, soit aucune différence.';
           diffStatus.style.display='block'; diffStatus.style.color='#b26b00';
-        } else { alert('Aucun diff généré.'); }
+        } else { alert('Aucun diff avec différences à effacer.'); }
         return;
       }
       masks.length = 0; drawMasks(); saveMasks(); 
@@ -387,7 +390,7 @@
       const rect = maskCanvas.getBoundingClientRect();
       const x = Math.round((e.clientX-rect.left) * (canvas.width/rect.width));
       const y = Math.round((e.clientY-rect.top) * (canvas.height/rect.height));
-  if(drawing && start){ const r = { x: Math.min(start.x,x), y: Math.min(start.y,y), w: Math.abs(x-start.x), h: Math.abs(y-start.y) }; if(r.w>2 && r.h>2){ masks.push(r); saveMasks(); } start=null; drawMasks(); }
+  if(drawing && start){ const r = { x: Math.min(start.x,x), y: Math.min(start.y,y), w: Math.abs(x-start.x), h: Math.abs(y-start.y) }; if(r.w>2 && r.h>2){ masks.push(r); saveMasks(); } start=null; drawMasks(); updateButtons(); }
   if(moving){ moving=false; maskCanvas.classList.remove('moving'); saveMasks(); }
     };
     maskCanvas.addEventListener('mouseup', finish);
