@@ -73,15 +73,17 @@
         <label><input type="checkbox" id="lumaOnly" /> Luminance seule <span class="help" aria-label="Aide" title="Compare uniquement la luminosité (Y). Réduit les écarts de teinte mineurs, utile pour le texte.">i</span></label>
         <label><input type="checkbox" id="blur1" /> Lisser (1 px) <span class="help" aria-label="Aide" title="Applique un léger flou (1 px) avant la comparaison pour atténuer l’anticrénelage.">i</span></label>
         <label><input type="checkbox" id="edgeTol" /> Tolérance bords (AA) <span class="help" aria-label="Aide" title="Augmente la tolérance près des bords forts (anticrénelage) pour réduire les faux positifs.">i</span></label>
+      </div>
+      <div class="controls-row" style="justify-content:center">
         <button id="maskToggle" class="btn secondary" type="button">Ignorer une zone</button>
         <button id="maskClear" class="btn secondary" type="button">Effacer zones ignorées</button>
       </div>
-      <div class="controls-row">
-        <button id="runDiff">Lancer le diff</button>
-        <button id="swapImages">Inverser</button>
-        <button id="clearImages">Effacer</button>
+      <div class="controls-row" style="justify-content:center">
+        <button id="runDiff" class="btn secondary">Lancer le diff</button>
+        <button id="swapImages" class="btn secondary">Inverser</button>
+        <button id="clearImages" class="btn secondary">Effacer</button>
       </div>
-      <div class="controls-row">
+      <div class="controls-row" style="justify-content:center">
         <button id="resetPrefs" class="btn secondary" type="button">Réinitialiser préférences</button>
         <button id="downloadDiff" class="btn secondary" type="button">Télécharger le diff</button>
       </div>
