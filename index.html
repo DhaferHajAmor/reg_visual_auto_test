@@ -352,7 +352,17 @@ window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
           document.documentElement.appendChild(s);
           s.remove();
         }catch(err){
-          try{ alert('Erreur lors de l\'injection du bookmarklet: '+(err && err.message?err.message:err)); }catch(_){ console.error('Bookmarklet injection failed', err); }
+          try{
+            // Fallback: create a Blob URL and inject as external script (works around some CSP/eval issues)
+            const wrapped = '(function(){try{'+code+'}catch(e){console.error("bookmarklet inner error",e);}})();';
+            const blob = new Blob([wrapped], { type: 'text/javascript' });
+            const url = URL.createObjectURL(blob);
+            const s2 = document.createElement('script');
+            s2.src = url;
+            s2.onload = ()=>{ setTimeout(()=>{ URL.revokeObjectURL(url); }, 50); s2.remove(); };
+            s2.onerror = (e)=>{ try{ alert('Echec injection via Blob: '+(e && e.message?e.message:e)); }catch(_){ console.error('Blob injection failed', e); } URL.revokeObjectURL(url); };
+            document.documentElement.appendChild(s2);
+          }catch(inner){ try{ alert('Erreur lors de l\'injection du bookmarklet: '+(inner && inner.message?inner.message:inner)); }catch(_){ console.error('Bookmarklet injection failed', inner); } }
         }
       };
       a.addEventListener('click', runBookmarklet);
