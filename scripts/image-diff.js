@@ -24,6 +24,7 @@
   const clearBtn = $('#clearImages');
 
   const state = { A:null, B:null };
+  let hasDiff = false; // devient true après premier runDiff réussi
 
   function fileToImage(file){
     return new Promise((resolve, reject) => {
@@ -205,6 +206,7 @@
       diffStatus.style.color = '#b00020'; // rouge
     }
   }
+  hasDiff = true;
   running = false; runBtn.removeAttribute('disabled');
   }
 
@@ -273,6 +275,7 @@
   });
   clearBtn.addEventListener('click', () => {
     state.A=null; state.B=null;
+  hasDiff = false;
     // Clear previews and filenames
     $$('.dropzone img').forEach(i=>i.removeAttribute('src'));
     $$('.dropzone .fname').forEach(n=>n.textContent='');
@@ -297,13 +300,29 @@
   const maskClear = document.getElementById('maskClear');
   if(maskCanvas && maskToggle){
     maskToggle.addEventListener('click', ()=>{
+      if(!hasDiff){
+        if(diffStatus){
+          diffStatus.textContent='⚠️ Lancez un diff (deux images + "Lancer le diff") avant de définir des zones ignorées.';
+          diffStatus.style.display='block'; diffStatus.style.color='#b26b00';
+        } else { alert('Lancez un diff avant d\'utiliser les zones ignorées.'); }
+        return;
+      }
       drawing = !drawing; selectedIndex = -1; moving = false;
       maskCanvas.classList.toggle('drawing', drawing);
       maskCanvas.classList.remove('moving');
       maskToggle.textContent = drawing ? 'Terminer zones ignorées' : 'Ignorer une zone';
       drawMasks();
     });
-  maskClear && maskClear.addEventListener('click', ()=>{ masks.length = 0; drawMasks(); saveMasks(); });
+  maskClear && maskClear.addEventListener('click', ()=>{ 
+      if(!hasDiff){
+        if(diffStatus){
+          diffStatus.textContent='⚠️ Rien à effacer : aucun diff généré.';
+          diffStatus.style.display='block'; diffStatus.style.color='#b26b00';
+        } else { alert('Aucun diff généré.'); }
+        return;
+      }
+      masks.length = 0; drawMasks(); saveMasks(); 
+    });
     maskCanvas.addEventListener('mousedown', (e)=>{
       const rect = maskCanvas.getBoundingClientRect();
       const px = Math.round((e.clientX-rect.left) * (canvas.width/rect.width));
