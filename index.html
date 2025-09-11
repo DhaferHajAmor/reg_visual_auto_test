@@ -64,20 +64,26 @@
           <img alt="Aperçu image B" />
         </div>
       </div>
+      <div class="controls-row" style="justify-content:flex-end">
+        <label>Mode <select id="diffMode"><option value="pixel">Pixel (rapide)</option><option value="ssim">SSIM (perceptuel)</option></select> <span class="help" title="SSIM: mesure de similarité structurelle (plus proche de la perception humaine)">i</span></label>
+        <label><span id="thresholdLabelText">Seuil</span> <input id="threshold" type="range" min="0" max="100" value="8" /> <span id="thresholdVal">8%</span></label>
+      </div>
       <div class="controls-row">
-    <button id="maskToggle" class="btn secondary" type="button">Ignorer une zone</button>
-    <button id="maskClear" class="btn secondary" type="button">Effacer zones ignorées</button>
-    <label>Mode <select id="diffMode"><option value="pixel">Pixel (rapide)</option><option value="ssim">SSIM (perceptuel)</option></select> <span class="help" title="SSIM: mesure de similarité structurelle (plus proche de la perception humaine)">i</span></label>
-    <label><span id="thresholdLabelText">Seuil</span> <input id="threshold" type="range" min="0" max="100" value="8" /> <span id="thresholdVal">8%</span></label>
-    <label>Couleur de surbrillance <input id="diffColor" type="color" value="#ff0055" /></label>
-    <label><input type="checkbox" id="lumaOnly" /> Luminance seule <span class="help" aria-label="Aide" title="Compare uniquement la luminosité (Y). Réduit les écarts de teinte mineurs, utile pour le texte.">i</span></label>
-    <label><input type="checkbox" id="blur1" /> Lisser (1 px) <span class="help" aria-label="Aide" title="Applique un léger flou (1 px) avant la comparaison pour atténuer l’anticrénelage.">i</span></label>
-    <label><input type="checkbox" id="edgeTol" /> Tolérance bords (AA) <span class="help" aria-label="Aide" title="Augmente la tolérance près des bords forts (anticrénelage) pour réduire les faux positifs.">i</span></label>
-    <button id="runDiff">Lancer le diff</button>
-    <button id="swapImages">Inverser</button>
-    <button id="clearImages">Effacer</button>
-    <button id="resetPrefs" class="btn secondary" type="button">Réinitialiser préférences</button>
-    <button id="downloadDiff" class="btn secondary" type="button">Télécharger le diff</button>
+        <label>Couleur <input id="diffColor" type="color" value="#ff0055" /></label>
+        <label><input type="checkbox" id="lumaOnly" /> Luminance seule <span class="help" aria-label="Aide" title="Compare uniquement la luminosité (Y). Réduit les écarts de teinte mineurs, utile pour le texte.">i</span></label>
+        <label><input type="checkbox" id="blur1" /> Lisser (1 px) <span class="help" aria-label="Aide" title="Applique un léger flou (1 px) avant la comparaison pour atténuer l’anticrénelage.">i</span></label>
+        <label><input type="checkbox" id="edgeTol" /> Tolérance bords (AA) <span class="help" aria-label="Aide" title="Augmente la tolérance près des bords forts (anticrénelage) pour réduire les faux positifs.">i</span></label>
+        <button id="maskToggle" class="btn secondary" type="button">Ignorer une zone</button>
+        <button id="maskClear" class="btn secondary" type="button">Effacer zones ignorées</button>
+      </div>
+      <div class="controls-row">
+        <button id="runDiff">Lancer le diff</button>
+        <button id="swapImages">Inverser</button>
+        <button id="clearImages">Effacer</button>
+      </div>
+      <div class="controls-row">
+        <button id="resetPrefs" class="btn secondary" type="button">Réinitialiser préférences</button>
+        <button id="downloadDiff" class="btn secondary" type="button">Télécharger le diff</button>
       </div>
   <div id="diffStatus" class="tip" aria-live="polite" style="display:none;text-align:center;font-weight:600"></div>
       <div id="diffContainer" class="diff-wrap">
