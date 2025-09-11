@@ -18,14 +18,10 @@
       <div class="cta-row">
         <a id="bookmarkletLinkTop" class="btn" href="#">Superposition en direct</a>
         <button id="copyBookmarklet" class="btn secondary" type="button">Copier le bookmarklet</button>
-        <button id="demoHere" class="btn secondary" type="button">Essayer ici (démo)</button>
-        <label class="sr-only" for="themeSelect">Thème</label>
-        <select id="themeSelect" class="btn secondary" title="Choisir un thème">
-          <option value="auto">Auto (système)</option>
-          <option value="dark">Sombre</option>
-          <option value="light">Clair</option>
-          <option value="desjardins">Desjardins</option>
-        </select>
+        
+  <label class="sr-only">Thème</label>
+  <button id="themeMoon" class="btn secondary" title="Sombre">🌙</button>
+  <button id="themeSun" class="btn secondary" title="Desjardins">☀️</button>
       </div>
     </div>
   </header>  
@@ -134,7 +130,7 @@ const loupe=d.createElement('div');loupe.className='visdiff-loupe visdiff-hidden
 const handle=d.createElement('div');handle.className='visdiff-handle visdiff-hidden';const knob=d.createElement('div');knob.className='visdiff-knob';handle.appendChild(knob);stage.appendChild(handle);
 // Crop layer (for area selection)
 const cropLayer=d.createElement('div');cropLayer.className='visdiff-crop-layer visdiff-hidden';const cropRect=d.createElement('div');cropRect.className='visdiff-crop-rect';cropLayer.appendChild(cropRect);root.appendChild(cropLayer);
-const panel=d.createElement('div');panel.className='visdiff-panel visdiff-hidden';panel.innerHTML=`<h3>Superposition visuelle</h3>
+const panel=d.createElement('div');panel.className='visdiff-panel visdiff-hidden';panel.innerHTML=`<div class=\"visdiff-header\"><h3 style=\"margin:0;font-size:15px\">Superposition visuelle</h3><div class=\"visdiff-theme-switch\"><button id=\"vdthemeAuto\" class=\"visdiff-btn\" type=\"button\" title=\"Thème auto (système)\">🖥️</button><button id=\"vdthemeDark\" class=\"visdiff-btn\" type=\"button\" title=\"Thème sombre\">🌙</button><button id=\"vdthemeDesj\" class=\"visdiff-btn\" type=\"button\" title=\"Thème Desjardins\">☀️</button></div></div>
 <div class=\"visdiff-row\"><button id=\"vdpick\" class=\"visdiff-btn\" type=\"button\">Choisir une image</button><small id=\"vdfname\" style=\"color:var(--ov-muted)\"></small><input type=\"file\" accept=\"image/*\" id=\"vdupload\" aria-label=\"Importer une image\" style=\"display:none\"></div>
 <div class=\"visdiff-row\"><label>Opacité</label><input type=\"range\" id=\"vdopacity\" min=\"0\" max=\"100\" value=\"60\"><span id=\"vdopval\">60%</span><label>Échelle</label><input type=\"range\" id=\"vdscale\" min=\"10\" max=\"400\" value=\"100\"><span id=\"vdscval\">100%</span></div>
 <div class=\"visdiff-row\"><label>X</label><input type=\"number\" id=\"vdx\" value=\"0\" style=\"width:80px\"><label>Y</label><input type=\"number\" id=\"vdy\" value=\"0\" style=\"width:80px\"></div>
@@ -144,8 +140,8 @@ const panel=d.createElement('div');panel.className='visdiff-panel visdiff-hidden
 <div class=\"visdiff-row\"><label>Loupe</label><input type=\"checkbox\" id=\"vdloupe\"><label>Taille</label><input type=\"range\" id=\"vdloupes\" min=\"100\" max=\"300\" value=\"160\"><label>Zoom</label><input type=\"range\" id=\"vdloupez\" min=\"200\" max=\"800\" value=\"300\"></div>
 <div class=\"visdiff-row\"><label>Curseur</label><input type=\"checkbox\" id=\"vdsld\"><label>Position</label><input type=\"range\" id=\"vdsldp\" min=\"0\" max=\"100\" value=\"50\"></div>
 <div class=\"visdiff-row\"><label>Auto‑masquer le panneau</label><input type=\"checkbox\" id=\"vdautoui\"></div>
-<div class=\"visdiff-buttons\"><button id=\"vdfit\" class=\"visdiff-btn\">Ajuster au viewport</button><button id=\"vdexport\" class=\"visdiff-btn\">Exporter l\'overlay</button><button id=\"vdcenter\" class=\"visdiff-btn\">Centrer overlay</button><button id=\"vdhide\" class=\"visdiff-btn\">Masquer overlay</button></div>
-<div class=\"visdiff-buttons\"><button id=\"vdreset\" class=\"visdiff-btn\">Réinitialiser</button><button id=\"vdclose\" class=\"visdiff-btn danger\">Fermer</button></div>
+<div class=\"visdiff-buttons\"><button id=\"vdexport\" class=\"visdiff-btn\">Exporter l\'overlay</button><button id=\"vdcenter\" class=\"visdiff-btn\">Centrer overlay</button><button id=\"vdhide\" class=\"visdiff-btn\">Masquer overlay</button></div>
+<div class=\"visdiff-buttons\"><button id=\"vdfit\" class=\"visdiff-btn\">Ajuster au viewport</button><button id=\"vdreset\" class=\"visdiff-btn\">Réinitialiser</button><button id=\"vdclose\" class=\"visdiff-btn danger\">Fermer</button></div>
 <div class=\"visdiff-row\" style=\"font-size:12px;color:#a7acc6\">Flèches: déplacer | +/-: échelle | D: difference | G: grille | L: loupe | S: curseur | X: export | P: capture | H: UI | U: auto‑masque | Échap: fermer</div>`;
 root.appendChild(panel);d.documentElement.appendChild(root);
 const reopen=document.createElement('button');reopen.className='visdiff-reopen visdiff-hidden';reopen.textContent='Afficher le panneau';root.appendChild(reopen);
@@ -175,7 +171,7 @@ root.style.setProperty('--ov-danger-bg', pal.dangerBg);
 root.style.setProperty('--ov-danger-border', pal.dangerBorder);
 let open=false,showUI=true;
 const $=sel=>panel.querySelector(sel);
-const btnPick=$('#vdpick');const fileInput=$('#vdupload');const fnLabel=$('#vdfname');const opInput=$('#vdopacity');const opVal=$('#vdopval');const scInput=$('#vdscale');const scVal=$('#vdscval');const xInput=$('#vdx');const yInput=$('#vdy');const blendSel=$('#vdblend');const btnHide=$('#vdhide');const btnCenter=$('#vdcenter');const btnFit=$('#vdfit');const btnReset=$('#vdreset');const btnClose=$('#vdclose');
+const btnPick=$('#vdpick');let fileInput=$('#vdupload');const fnLabel=$('#vdfname');const opInput=$('#vdopacity');const opVal=$('#vdopval');const scInput=$('#vdscale');const scVal=$('#vdscval');const xInput=$('#vdx');const yInput=$('#vdy');const blendSel=$('#vdblend');const btnHide=$('#vdhide');const btnCenter=$('#vdcenter');const btnFit=$('#vdfit');const btnReset=$('#vdreset');const btnClose=$('#vdclose');
 const gridChk=$('#vdgrid');const gridSp=$('#vdgridsp');const gridOp=$('#vdgrido');const gridColor=$('#vdgridc');
 const loupeChk=$('#vdloupe');const loupeSize=$('#vdloupes');const loupeZoom=$('#vdloupez');
 const sldChk=$('#vdsld');const sldPos=$('#vdsldp');
@@ -214,12 +210,77 @@ function setBlend(b){
 function openUI(){open=true;root.classList.remove('visdiff-hidden');panel.classList.toggle('visdiff-hidden',!showUI);reopen.classList.toggle('visdiff-hidden',showUI||!open)}
 function closeUI(){open=false;root.classList.add('visdiff-hidden');panel.classList.add('visdiff-hidden');reopen.classList.add('visdiff-hidden')}
 function toggleUI(force){if(typeof force==='boolean')showUI=force;else showUI=!showUI;panel.classList.toggle('visdiff-hidden',!showUI);reopen.classList.toggle('visdiff-hidden',showUI||!open)}
-btnPick.addEventListener('click',()=>{ try{ fileInput.value=''; }catch(_){} fileInput.click() });
-fileInput.addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(!f)return;fnLabel.textContent=f.name||'';try{if(lastURL)URL.revokeObjectURL(lastURL)}catch(_){}
-  const url=URL.createObjectURL(f);lastURL=url;img.onload=()=>{lImg.src=img.src;float.classList.remove('visdiff-hidden');apply()};
-  img.onerror=()=>{alert('Impossible de charger cette image');};
+// Full teardown: revoke blob URL, remove injected DOM and globals
+function destroyOverlay(){
+  try{ if(lastURL){ URL.revokeObjectURL(lastURL); lastURL=null; } }catch(_){ }
+  try{ if(root && root.parentNode){ root.parentNode.removeChild(root); } }catch(_){ }
+  try{ if(st && st.parentNode){ st.parentNode.removeChild(st); } }catch(_){ }
+  try{ if(reopen && reopen.parentNode){ reopen.parentNode.removeChild(reopen); } }catch(_){ }
+  try{ delete window.__VIS_DIFF__; }catch(_){ }
+}
+function handleFileSelection(e){
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  fnLabel.textContent=f.name||'';
+  try{ if(lastURL) URL.revokeObjectURL(lastURL); }catch(_){ }
+  const url=URL.createObjectURL(f); lastURL=url;
+  img.onload=()=>{ lImg.src=img.src; float.classList.remove('visdiff-hidden'); apply(); };
+  img.onerror=()=>{ alert('Impossible de charger cette image'); };
   img.src=url;
+}
+if(fileInput){ fileInput.addEventListener('change', handleFileSelection); }
+btnPick.addEventListener('click', ()=>{
+  try{
+    const newInput=fileInput.cloneNode();
+    newInput.value='';
+    fileInput.replaceWith(newInput);
+    fileInput=newInput;
+    fileInput.addEventListener('change', handleFileSelection);
+    fileInput.click();
+  }catch(_){ }
 });
+// Close overlay (full destroy)
+// Theme buttons inside overlay header
+const btnThemeAuto=panel.querySelector('#vdthemeAuto');
+const btnThemeDark=panel.querySelector('#vdthemeDark');
+const btnThemeDesj=panel.querySelector('#vdthemeDesj');
+function applyThemeButtons(t){
+  if(btnThemeAuto) btnThemeAuto.disabled = (t==='auto');
+  if(btnThemeDark) btnThemeDark.disabled = (t==='dark');
+  if(btnThemeDesj) btnThemeDesj.disabled = (t==='desjardins');
+}
+function resolveAuto(){
+  try{ return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark':'light'; }catch(_){ return 'dark'; }
+}
+function setOverlayTheme(name){
+  const actual = name==='auto'? resolveAuto(): name;
+  const pal=palettes[actual]||palettes.desjardins;
+  root.style.setProperty('--ov-panel', pal.panel);
+  root.style.setProperty('--ov-text', pal.text);
+  root.style.setProperty('--ov-border', pal.border);
+  root.style.setProperty('--ov-muted', pal.muted);
+  root.style.setProperty('--ov-btn', pal.btn);
+  root.style.setProperty('--ov-btn-border', pal.btnBorder);
+  root.style.setProperty('--ov-btn-text', pal.btnText);
+  root.style.setProperty('--ov-reopen-bg', pal.reopenBg);
+  root.style.setProperty('--ov-reopen-border', pal.reopenBorder);
+  root.style.setProperty('--ov-accent', pal.accent);
+  root.style.setProperty('--ov-knob-border', pal.knobBorder);
+  root.style.setProperty('--ov-danger-bg', pal.dangerBg);
+  root.style.setProperty('--ov-danger-border', pal.dangerBorder);
+  applyThemeButtons(name);
+  try{ localStorage.setItem('VD::theme', name); }catch(_){ }
+  // Reflect on page root (so main site theme stays in sync)
+  const pageRoot=document.documentElement;
+  if(name==='desjardins'){ pageRoot.setAttribute('data-theme','desjardins'); }
+  else if(name==='dark'){ pageRoot.removeAttribute('data-theme'); }
+  else if(name==='auto'){ const r=resolveAuto(); if(r==='light') pageRoot.setAttribute('data-theme','light'); else pageRoot.removeAttribute('data-theme'); }
+  else if(name==='light'){ pageRoot.setAttribute('data-theme','light'); }
+}
+if(btnThemeAuto){ btnThemeAuto.addEventListener('click',()=>setOverlayTheme('auto')); }
+if(btnThemeDark){ btnThemeDark.addEventListener('click',()=>setOverlayTheme('dark')); }
+if(btnThemeDesj){ btnThemeDesj.addEventListener('click',()=>setOverlayTheme('desjardins')); }
+applyThemeButtons(th);
+// file input change handled by handleFileSelection above
 opInput.addEventListener('input',()=>{opacity=(parseInt(opInput.value,10)||0)/100;apply()});
 scInput.addEventListener('input',()=>{scale=(parseInt(scInput.value,10)||100)/100;apply()});
 xInput.addEventListener('change',()=>{posX=parseFloat(xInput.value)||0;apply()});
@@ -338,18 +399,15 @@ window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
         try { await navigator.clipboard.writeText(href); alert('Bookmarklet copié dans le presse‑papiers. Collez‑le comme URL d’un nouveau favori.'); }
         catch { alert('Impossible de copier automatiquement. Copiez le lien manuellement.'); }
       });
-      // Demo here: mounts the overlay sur cette même page
-      document.getElementById('demoHere').addEventListener('click', () => {
-        // exécute le code du bookmarklet localement
-        // eslint-disable-next-line no-eval
-        eval(code);
-      });
+  // (demoHere button removed)
+  // Guard left intentionally: if reintroduced, wrap in existence check.
     })();
 
-    // Theme select with persistence (includes "Desjardins" palette)
+    // Theme buttons with persistence (moon = dark, sun = Desjardins)
     (function(){
       const key = 'VD::theme';
-      const sel = document.getElementById('themeSelect');
+      const btnMoon = document.getElementById('themeMoon');
+      const btnSun = document.getElementById('themeSun');
       const root = document.documentElement;
       const mql = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
       function applyTheme(t){
@@ -361,14 +419,15 @@ window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
         if(applied==='light'){ root.setAttribute('data-theme','light'); }
         else if(applied==='desjardins'){ root.setAttribute('data-theme','desjardins'); }
         else { root.removeAttribute('data-theme'); }
-        if(sel){ sel.value = t || 'dark'; }
+        if(btnMoon) btnMoon.setAttribute('aria-pressed', String(t==='dark'));
+        if(btnSun) btnSun.setAttribute('aria-pressed', String(t==='desjardins'));
       }
       let saved = null; try{ saved = localStorage.getItem(key); }catch(_){ }
-      // Default to Desjardins if none set, per request
       const initial = saved || 'desjardins';
       applyTheme(initial);
-      if(mql){ mql.addEventListener('change', ()=>{ const t = (sel && sel.value) || initial; if(t==='auto'){ applyTheme('auto'); } }); }
-      if(sel){ sel.addEventListener('change', ()=>{ const t = sel.value; applyTheme(t); try{ localStorage.setItem(key, t); }catch(_){} }); }
+      if(mql){ mql.addEventListener('change', ()=>{ const t = localStorage.getItem(key) || initial; if(t==='auto'){ applyTheme('auto'); } }); }
+      if(btnMoon){ btnMoon.addEventListener('click', ()=>{ try{ localStorage.setItem(key,'dark'); }catch(_){} applyTheme('dark'); if(window.__VIS_DIFF__ && typeof window.__VIS_DIFF__.applyTheme === 'function') window.__VIS_DIFF__.applyTheme(); }); }
+      if(btnSun){ btnSun.addEventListener('click', ()=>{ try{ localStorage.setItem(key,'desjardins'); }catch(_){} applyTheme('desjardins'); if(window.__VIS_DIFF__ && typeof window.__VIS_DIFF__.applyTheme === 'function') window.__VIS_DIFF__.applyTheme(); }); }
     })();
 
     // Tabs logic

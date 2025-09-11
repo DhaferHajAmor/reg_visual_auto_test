@@ -31,8 +31,7 @@
   .visdiff-buttons { flex-direction: column; gap: 4px; align-items: stretch; }
   .visdiff-btn { width: 100%; text-align: center; }
   .visdiff-reopen { right: 10px; }
-}`;
-`;d.documentElement.appendChild(st);
+}`;d.documentElement.appendChild(st);
 const root=d.createElement('div');root.className='visdiff-overlay-root visdiff-hidden';
 const stage=d.createElement('div');stage.className='visdiff-stage';root.appendChild(stage);
 const grid=d.createElement('div');grid.className='visdiff-grid visdiff-hidden';stage.appendChild(grid);
@@ -62,7 +61,7 @@ const loupe=d.createElement('div');loupe.className='visdiff-loupe visdiff-hidden
 const handle=d.createElement('div');handle.className='visdiff-handle visdiff-hidden';const knob=d.createElement('div');knob.className='visdiff-knob';handle.appendChild(knob);stage.appendChild(handle);
 // Crop layer (for area selection)
 const cropLayer=d.createElement('div');cropLayer.className='visdiff-crop-layer visdiff-hidden';const cropRect=d.createElement('div');cropRect.className='visdiff-crop-rect';cropLayer.appendChild(cropRect);root.appendChild(cropLayer);
-const panel=d.createElement('div');panel.className='visdiff-panel visdiff-hidden';panel.innerHTML=`<h3>Superposition visuelle</h3>
+const panel=d.createElement('div');panel.className='visdiff-panel visdiff-hidden';panel.innerHTML=`<div class=\"visdiff-header\"><h3 style=\"margin:0;font-size:15px\">Superposition visuelle</h3><div class=\"visdiff-theme-switch\"><button id=\"vdthemeAuto\" class=\"visdiff-btn\" type=\"button\" title=\"Thème auto (système)\">🖥️</button><button id=\"vdthemeDark\" class=\"visdiff-btn\" type=\"button\" title=\"Thème sombre\">🌙</button><button id=\"vdthemeDesj\" class=\"visdiff-btn\" type=\"button\" title=\"Thème Desjardins\">☀️</button></div></div>
 <div class=\"visdiff-row\"><button id=\"vdpick\" class=\"visdiff-btn\" type=\"button\">Choisir une image</button><small id=\"vdfname\" style=\"color:var(--ov-muted)\"></small><input type=\"file\" accept=\"image/*\" id=\"vdupload\" aria-label=\"Importer une image\" style=\"display:none\"></div>
 <div class=\"visdiff-row\"><label>Opacité</label><input type=\"range\" id=\"vdopacity\" min=\"0\" max=\"100\" value=\"60\"><span id=\"vdopval\">60%</span><label>Échelle</label><input type=\"range\" id=\"vdscale\" min=\"10\" max=\"400\" value=\"100\"><span id=\"vdscval\">100%</span></div>
 <div class=\"visdiff-row\"><label>X</label><input type=\"number\" id=\"vdx\" value=\"0\" style=\"width:80px\"><label>Y</label><input type=\"number\" id=\"vdy\" value=\"0\" style=\"width:80px\"></div>
@@ -101,14 +100,42 @@ root.style.setProperty('--ov-accent', pal.accent);
 root.style.setProperty('--ov-knob-border', pal.knobBorder);
 root.style.setProperty('--ov-danger-bg', pal.dangerBg);
 root.style.setProperty('--ov-danger-border', pal.dangerBorder);
+// Allow external triggers (page buttons) to reapply theme from storage
+function applyThemeFromStorage(){
+  try{
+    const key='VD::theme';
+    let t = 'desjardins';
+    try{ const saved = localStorage.getItem(key); if(saved) t=saved; }catch(_){ }
+    if(t==='auto'){
+      try{ t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }catch(_){ t='dark'; }
+    }
+    const p = palettes[t] || palettes.desjardins;
+    root.style.setProperty('--ov-panel', p.panel);
+    root.style.setProperty('--ov-text', p.text);
+    root.style.setProperty('--ov-border', p.border);
+    root.style.setProperty('--ov-muted', p.muted);
+    root.style.setProperty('--ov-btn', p.btn);
+    root.style.setProperty('--ov-btn-border', p.btnBorder);
+    root.style.setProperty('--ov-btn-text', p.btnText);
+    root.style.setProperty('--ov-reopen-bg', p.reopenBg);
+    root.style.setProperty('--ov-reopen-border', p.reopenBorder);
+    root.style.setProperty('--ov-accent', p.accent);
+    root.style.setProperty('--ov-knob-border', p.knobBorder);
+    root.style.setProperty('--ov-danger-bg', p.dangerBg);
+    root.style.setProperty('--ov-danger-border', p.dangerBorder);
+  }catch(_){ }
+}
 let open=false,showUI=true;
 const $=sel=>panel.querySelector(sel);
-const btnPick=$('#vdpick');const fileInput=$('#vdupload');const fnLabel=$('#vdfname');const opInput=$('#vdopacity');const opVal=$('#vdopval');const scInput=$('#vdscale');const scVal=$('#vdscval');const xInput=$('#vdx');const yInput=$('#vdy');const blendSel=$('#vdblend');const btnHide=$('#vdhide');const btnCenter=$('#vdcenter');const btnFit=$('#vdfit');const btnReset=$('#vdreset');const btnClose=$('#vdclose');
+const btnPick=$('#vdpick');let fileInput=$('#vdupload');const fnLabel=$('#vdfname');const opInput=$('#vdopacity');const opVal=$('#vdopval');const scInput=$('#vdscale');const scVal=$('#vdscval');const xInput=$('#vdx');const yInput=$('#vdy');const blendSel=$('#vdblend');const btnHide=$('#vdhide');const btnCenter=$('#vdcenter');const btnFit=$('#vdfit');const btnReset=$('#vdreset');const btnClose=$('#vdclose');
 const gridChk=$('#vdgrid');const gridSp=$('#vdgridsp');const gridOp=$('#vdgrido');const gridColor=$('#vdgridc');
 const loupeChk=$('#vdloupe');const loupeSize=$('#vdloupes');const loupeZoom=$('#vdloupez');
 const sldChk=$('#vdsld');const sldPos=$('#vdsldp');
 const btnExport=$('#vdexport');
 const autoChk=$('#vdautoui');
+const btnThemeAuto=$('#vdthemeAuto');
+const btnThemeDark=$('#vdthemeDark');
+const btnThemeDesj=$('#vdthemeDesj');
 let posX=0,posY=0,scale=1,opacity=.6,blend='normal';
 let prevOpacityForDiff=null;
 let gOn=false,gSp=8,gOp=.2,gCol='#7aa2ff';
@@ -142,11 +169,33 @@ function setBlend(b){
 function openUI(){open=true;root.classList.remove('visdiff-hidden');panel.classList.toggle('visdiff-hidden',!showUI);reopen.classList.toggle('visdiff-hidden',showUI||!open)}
 function closeUI(){open=false;root.classList.add('visdiff-hidden');panel.classList.add('visdiff-hidden');reopen.classList.add('visdiff-hidden')}
 function toggleUI(force){if(typeof force==='boolean')showUI=force;else showUI=!showUI;panel.classList.toggle('visdiff-hidden',!showUI);reopen.classList.toggle('visdiff-hidden',showUI||!open)}
-btnPick.addEventListener('click',()=>{ try{ fileInput.value=''; }catch(_){} fileInput.click() });
-fileInput.addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(!f)return;fnLabel.textContent=f.name||'';try{if(lastURL)URL.revokeObjectURL(lastURL)}catch(_){}
-  const url=URL.createObjectURL(f);lastURL=url;img.onload=()=>{lImg.src=img.src;float.classList.remove('visdiff-hidden');apply()};
-  img.onerror=()=>{alert('Impossible de charger cette image');};
+// Full teardown: revoke blob URL, remove injected DOM and globals
+function destroyOverlay(){
+  try{ if(lastURL){ URL.revokeObjectURL(lastURL); lastURL=null; } }catch(_){ }
+  try{ if(root && root.parentNode){ root.parentNode.removeChild(root); } }catch(_){ }
+  try{ if(st && st.parentNode){ st.parentNode.removeChild(st); } }catch(_){ }
+  try{ if(reopen && reopen.parentNode){ reopen.parentNode.removeChild(reopen); } }catch(_){ }
+  try{ delete window.__VIS_DIFF__; }catch(_){ }
+}
+function handleFileSelection(e){
+  const f=e.target.files&&e.target.files[0]; if(!f)return;
+  fnLabel.textContent=f.name||'';
+  try{ if(lastURL) URL.revokeObjectURL(lastURL); }catch(_){ }
+  const url=URL.createObjectURL(f); lastURL=url;
+  img.onload=()=>{ lImg.src=img.src; float.classList.remove('visdiff-hidden'); apply(); };
+  img.onerror=()=>{ alert('Impossible de charger cette image'); };
   img.src=url;
+}
+if(fileInput){ fileInput.addEventListener('change', handleFileSelection); }
+btnPick.addEventListener('click', ()=>{
+  try{
+    const newInput=fileInput.cloneNode();
+    newInput.value='';
+    fileInput.replaceWith(newInput);
+    fileInput=newInput;
+    fileInput.addEventListener('change', handleFileSelection);
+    fileInput.click();
+  }catch(_){ }
 });
 opInput.addEventListener('input',()=>{opacity=(parseInt(opInput.value,10)||0)/100;apply()});
 scInput.addEventListener('input',()=>{scale=(parseInt(scInput.value,10)||100)/100;apply()});
@@ -162,6 +211,13 @@ panel.addEventListener('mouseleave',()=>{if(autoUI){if(autoTimer)clearTimeout(au
 reopen.addEventListener('click',()=>toggleUI(true));
 btnReset.addEventListener('click',reset);
 btnClose.addEventListener('click',closeUI);
+// Wire full overlay close button (if present)
+const btnCloseOverlay = panel.querySelector('#vdcloseOverlay');
+if(btnCloseOverlay){ btnCloseOverlay.addEventListener('click', ()=>{ destroyOverlay(); }); }
+// Theme buttons inside overlay
+if(btnThemeAuto){ btnThemeAuto.addEventListener('click',()=>{ try{ localStorage.setItem('VD::theme','auto'); }catch(_){ } applyThemeFromStorage(); }); }
+if(btnThemeDark){ btnThemeDark.addEventListener('click',()=>{ try{ localStorage.setItem('VD::theme','dark'); }catch(_){ } applyThemeFromStorage(); }); }
+if(btnThemeDesj){ btnThemeDesj.addEventListener('click',()=>{ try{ localStorage.setItem('VD::theme','desjardins'); }catch(_){ } applyThemeFromStorage(); }); }
 gridChk.addEventListener('change',()=>{gOn=gridChk.checked;apply()});
 gridSp.addEventListener('change',()=>{gSp=Math.max(1,parseInt(gridSp.value,10)||8);apply()});
 gridOp.addEventListener('input',()=>{gOp=(parseInt(gridOp.value,10)||0)/100;apply()});
@@ -248,4 +304,9 @@ async function snapshotFullPage(){
   finally{ if(hid){ panel.classList.toggle('visdiff-hidden',!showUI) } handle.classList.toggle('visdiff-hidden',!sOn) }
 }
 load();autoChk.checked=autoUI; apply();openUI();
-window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
+window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI,destroy:destroyOverlay,applyTheme:applyThemeFromStorage};
+// If a previous instance exists, ensure we don't leave stale blob URLs
+try{ if(window.__VIS_DIFF__ && window.__VIS_DIFF__._lastURL){ try{ URL.revokeObjectURL(window.__VIS_DIFF__._lastURL); }catch(_){} window.__VIS_DIFF__._lastURL=null; } }catch(_){}
+// keep lastURL visible for debugging/cleanup
+window.__VIS_DIFF__._lastURL = lastURL;
+})();
