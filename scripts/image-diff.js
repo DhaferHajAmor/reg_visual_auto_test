@@ -25,6 +25,7 @@
 
   const state = { A:null, B:null };
   let hasDiff = false; // devient true après premier runDiff réussi
+  let hasDiffPixels = false; // true seulement si au moins 1 pixel diffère
   function showWarn(msg){
     if(diffStatus){ diffStatus.textContent=msg; diffStatus.style.display='block'; diffStatus.style.color='#b26b00'; }
     else { alert(msg.replace(/^⚠️\s*/,'')); }
@@ -214,7 +215,11 @@
     }
   }
   hasDiff = true;
-  if(downloadBtn){ downloadBtn.classList.remove('blocked'); }
+  hasDiffPixels = diffCount>0;
+  if(downloadBtn){
+    if(hasDiffPixels){ downloadBtn.classList.remove('blocked'); }
+    else { downloadBtn.classList.add('blocked'); }
+  }
   running = false; runBtn.removeAttribute('disabled');
   }
 
@@ -286,6 +291,7 @@
     if(!hasDiff){ showWarn('⚠️ Rien à effacer : aucun diff généré.'); return; }
     state.A=null; state.B=null;
   hasDiff = false;
+  hasDiffPixels = false;
   if(downloadBtn){ downloadBtn.classList.add('blocked'); }
   // Télécharger diff : nécessite un diff existant
   (function(){
@@ -299,7 +305,11 @@
           a.click();
         }catch(_){ showWarn('Téléchargement impossible.'); }
       };
-  dl.addEventListener('click', e=>{ if(!hasDiff){ showWarn('⚠️ Lancez un diff avant de télécharger.'); return; } origHandler(); });
+      dl.addEventListener('click', e=>{ 
+        if(!hasDiff){ showWarn('⚠️ Lancez un diff avant de télécharger.'); return; }
+        if(!hasDiffPixels){ showWarn('⚠️ Aucun pixel différent : rien à exporter.'); return; }
+        origHandler(); 
+      });
     }
   })();
     // Clear previews and filenames
