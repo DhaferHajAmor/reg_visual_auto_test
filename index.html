@@ -348,14 +348,17 @@ window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
           // Inject the bookmarklet code wrapped via Function constructor to avoid parsing/template issues
           const s = document.createElement('script');
           s.type = 'text/javascript';
-          s.textContent = '(function(){try{(new Function('+JSON.stringify(code)+'))();}catch(e){console.error("visdiff inner error",e);}})();';
+          // sanitize closing script tags which would break the host script
+          const safeCode = code.replace(/<\/script/gi, '<\\/script');
+          s.textContent = '(function(){try{(new Function('+JSON.stringify(safeCode)+'))();}catch(e){console.error("visdiff inner error",e);}})();';
           document.documentElement.appendChild(s);
           s.remove();
         }catch(err){
           try{
             // Fallback: create a Blob URL and inject as external script (works around some CSP/eval issues)
             // Use Function constructor inside blob to avoid accidental parsing of template literals or HTML
-            const blobContent = '(function(){try{(new Function('+JSON.stringify(code)+'))();}catch(e){console.error("bookmarklet inner error",e);}})();';
+            const safeCode = code.replace(/<\/script/gi, '<\\/script');
+            const blobContent = '(function(){try{(new Function('+JSON.stringify(safeCode)+'))();}catch(e){console.error("bookmarklet inner error",e);}})();';
             const blob = new Blob([blobContent], { type: 'text/javascript' });
             const url = URL.createObjectURL(blob);
             const s2 = document.createElement('script');
