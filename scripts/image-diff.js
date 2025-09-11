@@ -328,6 +328,26 @@
     if(diffStatus){ diffStatus.textContent=''; diffStatus.style.display='none'; }
   });
 
+  // Download diff result (only active when hasDiff && hasDiffPixels via gating)
+  if(downloadBtn){
+    downloadBtn.addEventListener('click', () => {
+      if(!(hasDiff && hasDiffPixels)){
+        showWarn('⚠️ Générez un diff avec des différences avant de télécharger.');
+        return;
+      }
+      try {
+        // Export only the diff canvas (masked zones already visually dimmed there)
+        const outName = `diff-${new Date().toISOString().replace(/[:T]/g,'-').replace(/\..+/, '')}.png`;
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = outName;
+        a.click();
+      } catch(e){
+        showWarn('⚠️ Échec export: '+ e);
+      }
+    });
+  }
+
   // Mask UI wiring
   // (maskToggle, maskClear already defined above)
   if(maskCanvas && maskToggle){
