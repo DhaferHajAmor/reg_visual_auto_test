@@ -342,7 +342,19 @@ window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
       a.setAttribute('href', href);
       aTop.setAttribute('href', href);
       // Handle direct clicks (for browsers blocking javascript: URLs)
-      const runBookmarklet = (e) => { e.preventDefault(); try { eval(code); } catch(err) { alert('Erreur: ' + err.message); } };
+      const runBookmarklet = (e) => {
+        e.preventDefault();
+        try{
+          // Inject the bookmarklet code as a script element to avoid eval parsing issues
+          const s = document.createElement('script');
+          s.type = 'text/javascript';
+          s.textContent = code;
+          document.documentElement.appendChild(s);
+          s.remove();
+        }catch(err){
+          try{ alert('Erreur lors de l\'injection du bookmarklet: '+(err && err.message?err.message:err)); }catch(_){ console.error('Bookmarklet injection failed', err); }
+        }
+      };
       a.addEventListener('click', runBookmarklet);
       aTop.addEventListener('click', runBookmarklet);
       // Copy to clipboard for users qui ne peuvent pas glisser
