@@ -39,7 +39,11 @@
   function updateButtons(){
     const bothLoaded = !!(state.A && state.B);
     if(runBtn){ if(!bothLoaded){ runBtn.classList.add('blocked'); runBtn.setAttribute('disabled',''); } else { runBtn.classList.remove('blocked'); runBtn.removeAttribute('disabled'); } }
-    [swapBtn, clearBtn, maskToggle, maskClear].forEach(b=>setBlocked(b, !hasDiff));
+  // Swap & Clear now enabled as soon as both images are loaded (even before first diff)
+  setBlocked(swapBtn, !bothLoaded);
+  setBlocked(clearBtn, !bothLoaded);
+  // Mask actions still require a diff run (can refine later to require differences if desired)
+  [maskToggle, maskClear].forEach(b=>setBlocked(b, !hasDiff));
     setBlocked(downloadBtn, !(hasDiff && hasDiffPixels));
   // Reset preferences must always remain active regardless of state
   setBlocked(resetPrefsBtn, false);
@@ -286,16 +290,20 @@
 
   runBtn.addEventListener('click', runDiff);
   swapBtn.addEventListener('click', () => {
-    if(!hasDiff){ showWarn('⚠️ Lancez un diff avant d\'inverser.'); return; }
+    if(!(state.A && state.B)){ showWarn('⚠️ Chargez deux images avant d\'inverser.'); return; }
     const t = state.A; state.A = state.B; state.B = t;
     drawPreview(state.A,'A'); drawPreview(state.B,'B');
     // also swap filenames in UI if present
     const zones = dropzones.reduce((acc,dz)=>{ acc[dz.dataset.side]=dz; return acc; },{});
     const nameA = zones['A'].querySelector('.fname'); const nameB = zones['B'].querySelector('.fname');
     if(nameA && nameB){ const tn = nameA.textContent; nameA.textContent = nameB.textContent; nameB.textContent = tn; }
+    // Invalidate previous diff (must be rerun after inversion)
+    hasDiff=false; hasDiffPixels=false;
+    if(diffStatus){ diffStatus.textContent='Images inversées : relancez le diff.'; diffStatus.style.display='block'; diffStatus.style.color='#b26b00'; }
+    updateButtons();
   });
   clearBtn.addEventListener('click', () => {
-    if(!hasDiff){ showWarn('⚠️ Rien à effacer : aucun diff généré.'); return; }
+    if(!(state.A || state.B)){ showWarn('⚠️ Aucune image à effacer.'); return; }
     state.A=null; state.B=null; hasDiff=false; hasDiffPixels=false; updateButtons();
     // Clear previews and filenames
     $$('.dropzone img').forEach(i=>i.removeAttribute('src'));
@@ -314,6 +322,7 @@
     if(maskCanvas){ maskCanvas.classList.remove('drawing','moving'); }
   if(typeof maskToggle!=='undefined' && maskToggle){ maskToggle.textContent='Ignorer une zone'; }
   try{ localStorage.removeItem('VD::diffMasks'); }catch(_){}
+    if(diffStatus){ diffStatus.textContent=''; diffStatus.style.display='none'; }
   });
 
   // Mask UI wiring
