@@ -24,15 +24,28 @@
   const clearBtn = $('#clearImages');
 
   const state = { A:null, B:null };
-  let hasDiff = false; // devient true après premier runDiff réussi
-  let hasDiffPixels = false; // true seulement si au moins 1 pixel diffère
+  let hasDiff = false; // diff executed at least once
+  let hasDiffPixels = false; // any differing pixels
   function showWarn(msg){
     if(diffStatus){ diffStatus.textContent=msg; diffStatus.style.display='block'; diffStatus.style.color='#b26b00'; }
     else { alert(msg.replace(/^⚠️\s*/,'')); }
   }
-  // mark download button visually blocked initially
+  // Buttons references & state helpers
   const downloadBtn = document.getElementById('downloadDiff');
+  const maskToggle = document.getElementById('maskToggle');
+  const maskClear = document.getElementById('maskClear');
+  const resetPrefsBtn = document.getElementById('resetPrefs');
+  function setBlocked(el, blocked){ if(!el) return; if(blocked){ el.classList.add('blocked'); el.setAttribute('aria-disabled','true'); } else { el.classList.remove('blocked'); el.removeAttribute('aria-disabled'); } }
+  function updateButtons(){
+    const bothLoaded = !!(state.A && state.B);
+    if(runBtn){ if(!bothLoaded){ runBtn.classList.add('blocked'); runBtn.setAttribute('disabled',''); } else { runBtn.classList.remove('blocked'); runBtn.removeAttribute('disabled'); } }
+    [swapBtn, clearBtn, maskToggle, maskClear].forEach(b=>setBlocked(b, !hasDiff));
+    setBlocked(downloadBtn, !(hasDiff && hasDiffPixels));
+  // Reset preferences must always remain active regardless of state
+  setBlocked(resetPrefsBtn, false);
+  }
   if(downloadBtn){ downloadBtn.classList.add('blocked'); }
+  updateButtons();
 
   function fileToImage(file){
     return new Promise((resolve, reject) => {
@@ -60,8 +73,7 @@
     const file = files && files[0];
     if(!file) return;
     const img = await fileToImage(file);
-    state[side] = img; // overwrite previous selection
-    drawPreview(img, side);
+  state[side] = img; drawPreview(img, side); hasDiff=false; hasDiffPixels=false; updateButtons();
   }
 
   dropzones.forEach(dz => {
@@ -214,12 +226,7 @@
       diffStatus.style.color = '#b00020'; // rouge
     }
   }
-  hasDiff = true;
-  hasDiffPixels = diffCount>0;
-  if(downloadBtn){
-    if(hasDiffPixels){ downloadBtn.classList.remove('blocked'); }
-    else { downloadBtn.classList.add('blocked'); }
-  }
+  hasDiff = true; hasDiffPixels = diffCount>0; updateButtons();
   running = false; runBtn.removeAttribute('disabled');
   }
 
@@ -289,29 +296,7 @@
   });
   clearBtn.addEventListener('click', () => {
     if(!hasDiff){ showWarn('⚠️ Rien à effacer : aucun diff généré.'); return; }
-    state.A=null; state.B=null;
-  hasDiff = false;
-  hasDiffPixels = false;
-  if(downloadBtn){ downloadBtn.classList.add('blocked'); }
-  // Télécharger diff : nécessite un diff existant
-  (function(){
-    const dl = document.getElementById('downloadDiff');
-    if(dl){
-      const origHandler = ()=>{
-        try{
-          const a=document.createElement('a');
-          a.href=canvas.toDataURL('image/png');
-          a.download='diff.png';
-          a.click();
-        }catch(_){ showWarn('Téléchargement impossible.'); }
-      };
-      dl.addEventListener('click', e=>{ 
-        if(!hasDiff){ showWarn('⚠️ Lancez un diff avant de télécharger.'); return; }
-        if(!hasDiffPixels){ showWarn('⚠️ Aucun pixel différent : rien à exporter.'); return; }
-        origHandler(); 
-      });
-    }
-  })();
+    state.A=null; state.B=null; hasDiff=false; hasDiffPixels=false; updateButtons();
     // Clear previews and filenames
     $$('.dropzone img').forEach(i=>i.removeAttribute('src'));
     $$('.dropzone .fname').forEach(n=>n.textContent='');
@@ -332,8 +317,7 @@
   });
 
   // Mask UI wiring
-  const maskToggle = document.getElementById('maskToggle');
-  const maskClear = document.getElementById('maskClear');
+  // (maskToggle, maskClear already defined above)
   if(maskCanvas && maskToggle){
     maskToggle.addEventListener('click', ()=>{
       if(!hasDiff){
@@ -348,6 +332,7 @@
       maskCanvas.classList.remove('moving');
       maskToggle.textContent = drawing ? 'Terminer zones ignorées' : 'Ignorer une zone';
       drawMasks();
+  updateButtons();
     });
   maskClear && maskClear.addEventListener('click', ()=>{ 
       if(!hasDiff){
@@ -358,6 +343,7 @@
         return;
       }
       masks.length = 0; drawMasks(); saveMasks(); 
+  updateButtons();
     });
     maskCanvas.addEventListener('mousedown', (e)=>{
       const rect = maskCanvas.getBoundingClientRect();
