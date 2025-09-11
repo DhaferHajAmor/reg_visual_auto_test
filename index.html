@@ -445,15 +445,7 @@ window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
       tabs.forEach(b => { b.classList.toggle('active', b===btn); b.setAttribute('aria-selected', b===btn); });
       panels.forEach(p => { p.classList.toggle('active', p.id===btn.dataset.tab); p.setAttribute('aria-hidden', p.id!==btn.dataset.tab); });
     }));
-    // Image diff: download
-    (function(){
-      const btn = document.getElementById('downloadDiff');
-      const canvas = document.getElementById('diffCanvas');
-      if(btn){ btn.addEventListener('click', ()=>{
-        try { const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='diff.png'; a.click(); }
-        catch(e){ alert('Téléchargement impossible: '+e); }
-      }); }
-    })();
+  // (handler déplacé vers scripts/image-diff.js pour gérer l'état hasDiff)
 
     // Image diff: custom file pickers
     (function(){
