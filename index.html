@@ -143,7 +143,7 @@ const panel=d.createElement('div');panel.className='visdiff-panel visdiff-hidden
 <div class=\"visdiff-row\"><label>Loupe</label><input type=\"checkbox\" id=\"vdloupe\"><label>Taille</label><input type=\"range\" id=\"vdloupes\" min=\"100\" max=\"300\" value=\"160\"><label>Zoom</label><input type=\"range\" id=\"vdloupez\" min=\"200\" max=\"800\" value=\"300\"></div>
 <div class=\"visdiff-row\"><label>Curseur</label><input type=\"checkbox\" id=\"vdsld\"><label>Position</label><input type=\"range\" id=\"vdsldp\" min=\"0\" max=\"100\" value=\"50\"></div>
 <div class=\"visdiff-row\"><label>Auto‑masquer le panneau</label><input type=\"checkbox\" id=\"vdautoui\"></div>
-<div class=\"visdiff-buttons\"><button id=\"vdexport\" class=\"visdiff-btn\">Exporter l\'overlay</button><button id=\"vdcenter\" class=\"visdiff-btn\">Centrer overlay</button><button id=\"vdhide\" class=\"visdiff-btn\">Masquer overlay</button></div>
+<div class=\"visdiff-buttons\"><button id=\"vdfit\" class=\"visdiff-btn\">Ajuster au viewport</button><button id=\"vdexport\" class=\"visdiff-btn\">Exporter l\'overlay</button><button id=\"vdcenter\" class=\"visdiff-btn\">Centrer overlay</button><button id=\"vdhide\" class=\"visdiff-btn\">Masquer overlay</button></div>
 <div class=\"visdiff-buttons\"><button id=\"vdreset\" class=\"visdiff-btn\">Réinitialiser</button><button id=\"vdclose\" class=\"visdiff-btn danger\">Fermer</button></div>
 <div class=\"visdiff-row\" style=\"font-size:12px;color:#a7acc6\">Flèches: déplacer | +/-: échelle | D: difference | G: grille | L: loupe | S: curseur | X: export | P: capture | H: UI | U: auto‑masque | Échap: fermer</div>`;
 root.appendChild(panel);d.documentElement.appendChild(root);
@@ -174,7 +174,7 @@ root.style.setProperty('--ov-danger-bg', pal.dangerBg);
 root.style.setProperty('--ov-danger-border', pal.dangerBorder);
 let open=false,showUI=true;
 const $=sel=>panel.querySelector(sel);
-const btnPick=$('#vdpick');const fileInput=$('#vdupload');const fnLabel=$('#vdfname');const opInput=$('#vdopacity');const opVal=$('#vdopval');const scInput=$('#vdscale');const scVal=$('#vdscval');const xInput=$('#vdx');const yInput=$('#vdy');const blendSel=$('#vdblend');const btnHide=$('#vdhide');const btnCenter=$('#vdcenter');const btnReset=$('#vdreset');const btnClose=$('#vdclose');
+const btnPick=$('#vdpick');const fileInput=$('#vdupload');const fnLabel=$('#vdfname');const opInput=$('#vdopacity');const opVal=$('#vdopval');const scInput=$('#vdscale');const scVal=$('#vdscval');const xInput=$('#vdx');const yInput=$('#vdy');const blendSel=$('#vdblend');const btnHide=$('#vdhide');const btnCenter=$('#vdcenter');const btnFit=$('#vdfit');const btnReset=$('#vdreset');const btnClose=$('#vdclose');
 const gridChk=$('#vdgrid');const gridSp=$('#vdgridsp');const gridOp=$('#vdgrido');const gridColor=$('#vdgridc');
 const loupeChk=$('#vdloupe');const loupeSize=$('#vdloupes');const loupeZoom=$('#vdloupez');
 const sldChk=$('#vdsld');const sldPos=$('#vdsldp');
@@ -226,6 +226,7 @@ yInput.addEventListener('change',()=>{posY=parseFloat(yInput.value)||0;apply()})
 blendSel.addEventListener('change',()=>{setBlend(blendSel.value)});
 btnHide.addEventListener('click',()=>{float.classList.toggle('visdiff-hidden')});
 btnCenter.addEventListener('click',()=>{if(img.src){posX=(window.innerWidth/2)-(img.naturalWidth*scale/2)+window.scrollX;posY=(window.innerHeight/2)-(img.naturalHeight*scale/2)+window.scrollY;apply()}});
+btnFit.addEventListener('click',()=>{if(img.src){scale=window.innerWidth/img.naturalWidth;scInput.value=String(Math.round(scale*100));apply()}});
 autoChk.addEventListener('change',()=>{autoUI=autoChk.checked;save()});
 panel.addEventListener('mouseenter',()=>{if(autoTimer){clearTimeout(autoTimer);autoTimer=null}});
 panel.addEventListener('mouseleave',()=>{if(autoUI){if(autoTimer)clearTimeout(autoTimer);autoTimer=setTimeout(()=>{toggleUI(false)},800)}});
