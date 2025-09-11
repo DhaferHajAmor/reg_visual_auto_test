@@ -41,6 +41,8 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-ap
 .tab:focus{outline:2px solid var(--accent); outline-offset:2px}
 .visdiff-btn:focus{outline:2px solid var(--accent); outline-offset:2px}
 .btn[disabled]{opacity:.6;cursor:not-allowed;transform:none}
+.btn.blocked{opacity:.55;cursor:not-allowed;position:relative}
+.btn.blocked::after{content:'';position:absolute;inset:0;border-radius:inherit;background:repeating-linear-gradient(45deg,rgba(0,0,0,.12)_0,rgba(0,0,0,.12)_6px,transparent_6px,transparent_12px);pointer-events:none}
 
 /* Spinner on Run button when disabled */
 #runDiff{position:relative}

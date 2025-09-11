@@ -29,6 +29,9 @@
     if(diffStatus){ diffStatus.textContent=msg; diffStatus.style.display='block'; diffStatus.style.color='#b26b00'; }
     else { alert(msg.replace(/^⚠️\s*/,'')); }
   }
+  // mark download button visually blocked initially
+  const downloadBtn = document.getElementById('downloadDiff');
+  if(downloadBtn){ downloadBtn.classList.add('blocked'); }
 
   function fileToImage(file){
     return new Promise((resolve, reject) => {
@@ -211,6 +214,7 @@
     }
   }
   hasDiff = true;
+  if(downloadBtn){ downloadBtn.classList.remove('blocked'); }
   running = false; runBtn.removeAttribute('disabled');
   }
 
@@ -282,6 +286,7 @@
     if(!hasDiff){ showWarn('⚠️ Rien à effacer : aucun diff généré.'); return; }
     state.A=null; state.B=null;
   hasDiff = false;
+  if(downloadBtn){ downloadBtn.classList.add('blocked'); }
   // Télécharger diff : nécessite un diff existant
   (function(){
     const dl = document.getElementById('downloadDiff');
@@ -294,7 +299,7 @@
           a.click();
         }catch(_){ showWarn('Téléchargement impossible.'); }
       };
-      dl.addEventListener('click', e=>{ if(!hasDiff){ showWarn('⚠️ Lancez un diff avant de télécharger.'); return; } origHandler(); });
+  dl.addEventListener('click', e=>{ if(!hasDiff){ showWarn('⚠️ Lancez un diff avant de télécharger.'); return; } origHandler(); });
     }
   })();
     // Clear previews and filenames
