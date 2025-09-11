@@ -98,7 +98,7 @@
   </footer>
 
   <script id="visdiff-bookmarklet-code" type="text/plain">
-(()=>{if(window.__VIS_DIFF__&&window.__VIS_DIFF__.open){window.__VIS_DIFF__.open();return}const d=document;const st=d.createElement('style');st.textContent=`
+try{(()=>{if(window.__VIS_DIFF__&&window.__VIS_DIFF__.open){window.__VIS_DIFF__.open();return}const d=document;const st=d.createElement('style');st.textContent=`
 .visdiff-overlay-root{position:fixed;inset:0;pointer-events:none;z-index:2147483647}
 .visdiff-panel{position:fixed;top:16px;right:16px;background:var(--ov-panel);color:var(--ov-text);border:1px solid var(--ov-border);border-radius:10px;padding:10px;min-width:320px;pointer-events:auto;box-shadow:0 6px 24px rgba(0,0,0,.35);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
 .visdiff-panel h3{margin:0 0 8px 0;font-size:16px}
@@ -328,6 +328,7 @@ async function snapshotFullPage(){
 }
 load();autoChk.checked=autoUI; apply();openUI();
 window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
+}catch(e){try{alert('Visual Diff — erreur: '+(e && e.message ? e.message : e));}catch(_){console.error('Visual Diff erreur',e)}}
   </script>
 
   <script>
