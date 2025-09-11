@@ -25,6 +25,10 @@
 
   const state = { A:null, B:null };
   let hasDiff = false; // devient true après premier runDiff réussi
+  function showWarn(msg){
+    if(diffStatus){ diffStatus.textContent=msg; diffStatus.style.display='block'; diffStatus.style.color='#b26b00'; }
+    else { alert(msg.replace(/^⚠️\s*/,'')); }
+  }
 
   function fileToImage(file){
     return new Promise((resolve, reject) => {
@@ -266,6 +270,7 @@
 
   runBtn.addEventListener('click', runDiff);
   swapBtn.addEventListener('click', () => {
+    if(!hasDiff){ showWarn('⚠️ Lancez un diff avant d\'inverser.'); return; }
     const t = state.A; state.A = state.B; state.B = t;
     drawPreview(state.A,'A'); drawPreview(state.B,'B');
     // also swap filenames in UI if present
@@ -274,8 +279,24 @@
     if(nameA && nameB){ const tn = nameA.textContent; nameA.textContent = nameB.textContent; nameB.textContent = tn; }
   });
   clearBtn.addEventListener('click', () => {
+    if(!hasDiff){ showWarn('⚠️ Rien à effacer : aucun diff généré.'); return; }
     state.A=null; state.B=null;
   hasDiff = false;
+  // Télécharger diff : nécessite un diff existant
+  (function(){
+    const dl = document.getElementById('downloadDiff');
+    if(dl){
+      const origHandler = ()=>{
+        try{
+          const a=document.createElement('a');
+          a.href=canvas.toDataURL('image/png');
+          a.download='diff.png';
+          a.click();
+        }catch(_){ showWarn('Téléchargement impossible.'); }
+      };
+      dl.addEventListener('click', e=>{ if(!hasDiff){ showWarn('⚠️ Lancez un diff avant de télécharger.'); return; } origHandler(); });
+    }
+  })();
     // Clear previews and filenames
     $$('.dropzone img').forEach(i=>i.removeAttribute('src'));
     $$('.dropzone .fname').forEach(n=>n.textContent='');
