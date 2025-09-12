@@ -44,9 +44,9 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-ap
 .btn.blocked{opacity:.55;cursor:not-allowed;position:relative}
 .btn.blocked::after{content:'';position:absolute;inset:0;border-radius:inherit;background:repeating-linear-gradient(45deg,rgba(0,0,0,.12)_0,rgba(0,0,0,.12)_6px,transparent_6px,transparent_12px);pointer-events:none}
 
-/* Spinner on Run button when disabled */
+/* Spinner on Run button when disabled BUT NOT blocked (only during diff execution) */
 #runDiff{position:relative}
-#runDiff[disabled]::after{
+#runDiff[disabled]:not(.blocked)::after{
   content:""; position:absolute; right:10px; top:50%; width:14px; height:14px; margin-top:-7px;
   border:2px solid rgba(255,255,255,.35); border-top-color: var(--accent); border-radius:50%;
   animation: spin .8s linear infinite;
