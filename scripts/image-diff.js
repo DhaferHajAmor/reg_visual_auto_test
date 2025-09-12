@@ -39,7 +39,15 @@
   function setBlocked(el, blocked){ if(!el) return; if(blocked){ el.classList.add('blocked'); el.setAttribute('aria-disabled','true'); } else { el.classList.remove('blocked'); el.removeAttribute('aria-disabled'); } }
   function updateButtons(){
     const bothLoaded = !!(state.A && state.B);
-    if(runBtn){ if(!bothLoaded){ runBtn.classList.add('blocked'); runBtn.setAttribute('disabled',''); } else { runBtn.classList.remove('blocked'); runBtn.removeAttribute('disabled'); } }
+    if(runBtn){
+      if(!bothLoaded || running){
+        runBtn.classList.add('blocked');
+        runBtn.setAttribute('disabled','');
+      } else {
+        runBtn.classList.remove('blocked');
+        runBtn.removeAttribute('disabled');
+      }
+    }
   // Swap & Clear now enabled as soon as both images are loaded (even before first diff)
   setBlocked(swapBtn, !bothLoaded);
   setBlocked(clearBtn, !bothLoaded);
