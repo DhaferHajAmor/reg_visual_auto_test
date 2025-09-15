@@ -3,6 +3,7 @@
 Outil 100% navigateur pour :
 1. Superposer rapidement un PNG (Figma / design) sur n’importe quelle page via un bookmarklet.
 2. Comparer deux images (design ↔ capture) avec diff pixel ou perceptuel (SSIM).
+3. Diagnostiquer automatiquement l’alignement (bouton « Diagnostiquer », Alt+clic = mode verbeux) et détecter les nouveaux éléments de la page par heuristique.
 
 Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
 
@@ -13,7 +14,11 @@ Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
 - Curseur « avant / après » (split dynamique ajustable).
 - Export du viewport avec overlay, capture ponctuelle ou zone sélectionnée, capture plein‑page (scroll & stitch best‑effort).
 - Mode difference avec auto‑max de l’opacité (retour à la valeur précédente en quittant difference).
-- Thèmes intégrés overlay : Auto (système), Sombre, Desjardins (avec palette personnalisée).
+- Palette fixe Desjardins pour l’overlay (simplifiée, plus de bascule de thème).
+- Détection heuristique des nouveaux éléments du DOM (bouton « Nouveaux éléments ») : surbrillance orange (nouveau) / jaune (partiel).
+- Diagnostic d’ajustement (échelle / recentrage / compensation scrollbars) avec toast de résultat.
+- Mode split optimisé (wrapper + transform) pour meilleures performances.
+- Recalage fluide pendant le scroll (évite le glissement de l’overlay).
 - Persistance par domaine (overlay) + persistance globale des préférences diff.
 - Mode Image ↔ Image : Pixel diff rapide ou SSIM (approx. perceptuel), masques exclusifs multi‑zones, réglages anti faux positifs.
 
@@ -37,10 +42,8 @@ Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
 - Grille : activer + Pas / Opacité / Couleur.
 - Loupe : activer + Taille + Zoom.
 - Curseur (split) : activer + Position.
-- Auto‑masquer : cache le panneau après sortie souris (réafficher via bouton rond). 
 - Export overlay : PNG du viewport (tient compte du split).
-- Ajuster au viewport, Centrer, Masquer image, Réinitialiser, Fermer.
-- Thème : Auto / Sombre / Desjardins (en haut‑droite du panneau).
+- Ajuster au viewport, Diagnostiquer (Alt+clic = logs détaillés), Centrer, Masquer image, Nouveaux éléments (toggle heuristique), Réinitialiser, Fermer.
 
 ## ⌨️ Raccourcis (overlay)
 | Touche | Action |
@@ -54,7 +57,7 @@ Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
 | X | Export overlay |
 | P | Capture (invite / zone / plein‑page selon séquence) |
 | H | Panneau on/off |
-| U | Auto‑masque panneau on/off |
+| (U retiré) | Fonction auto‑masque supprimée |
 | Échap | Fermer overlay |
 
 ##  Mode Image ↔ Image
@@ -67,11 +70,9 @@ Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
 
 ##  Persistance
 - Overlay : paramètres stockés par hôte (`localStorage` clé par domaine).
-- Thème : `VD::theme` (valeurs `dark`, `desjardins`, `auto`). 
 - Diff images : préférences globales (seuil, options, couleur, masques en relatif si applicable).
-
-##  Confidentialité
-Tout reste local. Aucune requête réseau générée par les fonctionnalités (hors APIs navigateur standard comme capture d’écran si autorisée par l’utilisateur).
+- Thème : (supprimé, palette fixe). 
+ - Diff images : préférences globales (seuil, options, couleur, masques en relatif si applicable).
 
 ## Limitations / Notes
 - Politiques CSP strictes peuvent empêcher un bookmarklet (rare). Solution : mode Image ↔ Image.
@@ -84,19 +85,15 @@ Structure clé :
 - `scripts/injector.js` : version script autonome (même logique).
 - (Option) `scripts/injector.min.js` : peut être régénéré (non automatisé ici).
 
-Éditer la logique overlay : modifier à la fois le bloc bookmarklet dans `index.html` et `scripts/injector.js` pour rester aligné.
-
-### Minification (suggestion)
-Outils possibles : esbuild, terser. Exemple (à adapter) :
-```
-esbuild scripts/injector.js --minify --outfile=scripts/injector.min.js
-```
+Éditer la logique overlay : modifier le bloc bookmarklet dans `index.html`. (La variante multi‑thèmes a été retirée; scripts/injector.js à synchroniser si réintroduit.)
 
 ### Roadmap potentielle
 - Option d’opacité adaptative sur difference.
 - Mode de comparaison « par couches » (pile de versions).
 - Export diff « overlay + page » combiné.
 - Génération automatique du bookmarklet depuis un build.
+- Ajustement automatique multi-stratégies plus précis (bounding client rect vs viewport partiel).
+- Paramètres configurables pour la détection des nouveaux éléments (seuils surface / pourcentage partiel / liste d’exclusion sélecteurs).
 
 ##  Tests manuels rapides
 - Charger overlay deux fois sur la même page : pas de doublon (réutilise état).
@@ -104,7 +101,7 @@ esbuild scripts/injector.js --minify --outfile=scripts/injector.min.js
 - Basculer difference : opacité passe à 100%, revenir restaure ancienne opacité.
 - Thème Auto puis changer thème système : réinjection reflète le changement.
 
-## 📄 Licence
+## Licence
 DPSNI
 ---
 Retour / idées bienvenus : ouvrez une issue ou proposez une PR.

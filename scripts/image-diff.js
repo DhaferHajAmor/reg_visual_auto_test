@@ -5,6 +5,7 @@
   const dropzones = $$('.dropzone');
   const canvas = $('#diffCanvas');
   const diffStatus = document.getElementById('diffStatus');
+  const diffSpinner = document.getElementById('diffSpinner');
   const maskCanvas = document.getElementById('maskCanvas');
   const ctx = canvas.getContext('2d');
   const mctx = maskCanvas ? maskCanvas.getContext('2d') : null;
@@ -27,6 +28,7 @@
   const objectURLs = { A:null, B:null }; // track blob URLs for cleanup
   let hasDiff = false; // diff executed at least once
   let hasDiffPixels = false; // any differing pixels
+  let running = false; // diff execution state
   function showWarn(msg){
     if(diffStatus){ diffStatus.textContent=msg; diffStatus.style.display='block'; diffStatus.style.color='#b26b00'; }
     else { alert(msg.replace(/^⚠️\s*/,'')); }
@@ -39,28 +41,18 @@
   function setBlocked(el, blocked){ if(!el) return; if(blocked){ el.classList.add('blocked'); el.setAttribute('aria-disabled','true'); } else { el.classList.remove('blocked'); el.removeAttribute('aria-disabled'); } }
   function updateButtons(){
     const bothLoaded = !!(state.A && state.B);
-    if(runBtn){
-      if(!bothLoaded || running){
-        runBtn.classList.add('blocked');
-        runBtn.setAttribute('disabled','');
-      } else {
-        runBtn.classList.remove('blocked');
-        runBtn.removeAttribute('disabled');
-      }
-    }
-  // Swap & Clear now enabled as soon as both images are loaded (even before first diff)
-  setBlocked(swapBtn, !bothLoaded);
-  setBlocked(clearBtn, !bothLoaded);
-  // Mask add toggle requires a diff WITH visual differences; clear requires at least one mask
-  const diffWithPixels = hasDiff && hasDiffPixels;
-  setBlocked(maskToggle, !diffWithPixels);
-  setBlocked(maskClear, !(diffWithPixels && masks && masks.length>0));
-  // Download also only when there are differing pixels
-  setBlocked(downloadBtn, !(hasDiff && hasDiffPixels));
+  // Le bouton runDiff reste toujours actif désormais (pas de disabled)
+  if(runBtn){ runBtn.classList.remove('blocked'); runBtn.removeAttribute('disabled'); }
+  // All buttons now active by default, but will show warnings if prerequisites not met
+  setBlocked(swapBtn, false);
+  setBlocked(clearBtn, false);
+  // All buttons are now active by default - warnings are shown in event handlers instead
+  setBlocked(maskToggle, false);
+  setBlocked(maskClear, false);
+  setBlocked(downloadBtn, false);
   // Reset preferences must always remain active regardless of state
   setBlocked(resetPrefsBtn, false);
   }
-  if(downloadBtn){ downloadBtn.classList.add('blocked'); }
   updateButtons();
 
   function fileToImage(file){
@@ -117,10 +109,17 @@
   function saveMasks(){ try{ localStorage.setItem(MASK_KEY, JSON.stringify({ w: canvas.width, h: canvas.height, rects: masks })); }catch(_){} }
   function restoreMasksForSize(w,h){ try{ const saved = JSON.parse(localStorage.getItem(MASK_KEY)||'null'); if(!saved||!saved.rects){ drawMasks(); updateButtons(); return; } const sx = saved.w? (w/saved.w):1; const sy = saved.h? (h/saved.h):1; masks.length=0; saved.rects.forEach(r=>masks.push({ x: Math.round(r.x*sx), y: Math.round(r.y*sy), w: Math.round(r.w*sx), h: Math.round(r.h*sy) })); drawMasks(); updateButtons(); }catch(_){ drawMasks(); updateButtons(); } }
 
-  let running = false;
   function runDiff(){
-  if(running) return; running = true; runBtn.setAttribute('disabled','');
-  if(!state.A || !state.B){ alert('Veuillez charger les deux images (A et B).'); running=false; runBtn.removeAttribute('disabled'); return; }
+  if(running) return; running = true; // ne plus désactiver le bouton
+    if(!state.A || !state.B){ showWarn('⚠️ Veuillez charger les deux images (A et B).'); running=false; runBtn.removeAttribute('disabled'); return; }
+    // Show spinner + interim status
+    if(diffSpinner){ diffSpinner.classList.remove('hidden'); }
+    if(diffStatus){ diffStatus.textContent='Calcul en cours…'; diffStatus.style.display='block'; diffStatus.style.color='#a7acc6'; }
+    // Defer heavy work so spinner paints
+    requestAnimationFrame(()=>{ setTimeout(executeDiff, 0); });
+  }
+
+  function executeDiff(){
     const w = Math.max(state.A.naturalWidth, state.B.naturalWidth);
     const h = Math.max(state.A.naturalHeight, state.B.naturalHeight);
     setCanvasSize(w,h);
@@ -133,121 +132,62 @@
     cA.drawImage(state.A, 0, 0);
     cB.drawImage(state.B, 0, 0);
 
-  let dA = cA.getImageData(0,0,w,h); let dB = cB.getImageData(0,0,w,h);
-  // Optional 1px box blur to reduce AA noise
-  if(blur1 && blur1.checked){ dA = boxBlur1(dA,w,h); dB = boxBlur1(dB,w,h); }
+    let dA = cA.getImageData(0,0,w,h); let dB = cB.getImageData(0,0,w,h);
+    // Optional 1px box blur to reduce AA noise
+    if(blur1 && blur1.checked){ dA = boxBlur1(dA,w,h); dB = boxBlur1(dB,w,h); }
     const out = ctx.createImageData(w,h);
-  const tPct = Math.max(0, Math.min(100, parseInt(thresholdInput.value, 10) || 0));
-  const mode = (diffModeSel && diffModeSel.value) || 'pixel';
-  const t = mode==='pixel' ? Math.round((tPct/100) * 255) : 1 - (tPct/100); // SSIM threshold: 1.0 identical -> flag if ssim < t
+    const tPct = Math.max(0, Math.min(100, parseInt(thresholdInput.value, 10) || 0));
+    const mode = (diffModeSel && diffModeSel.value) || 'pixel';
+    const t = mode==='pixel' ? Math.round((tPct/100) * 255) : 1 - (tPct/100); // SSIM threshold
     const color = hexToRgb(diffColorInput.value || '#ff0055');
 
-  let diffCount = 0;
-  if(mode==='pixel'){
-    for(let i=0; i<dA.data.length; i+=4){
-      const px = (i/4) % w; const py = Math.floor((i/4)/w);
-      // skip masked pixels
-      if(masks.length && masks.some(r=>pointInRect(px,py,r))){
-        // show faint background from B unchanged to indicate ignored
-        out.data[i] = dB.data[i] * 0.6;
-        out.data[i+1] = dB.data[i+1] * 0.6;
-        out.data[i+2] = dB.data[i+2] * 0.6;
-        out.data[i+3] = 255;
-        continue;
-      }
-      // luminance vs RGB diff
-      let maxDiff;
-      if(lumaOnly && lumaOnly.checked){
-        const lA = 0.2126*dA.data[i] + 0.7152*dA.data[i+1] + 0.0722*dA.data[i+2];
-        const lB = 0.2126*dB.data[i] + 0.7152*dB.data[i+1] + 0.0722*dB.data[i+2];
-        maxDiff = Math.abs(lA - lB);
-      } else {
-        const r = Math.abs(dA.data[i] - dB.data[i]);
-        const g = Math.abs(dA.data[i+1] - dB.data[i+1]);
-        const b = Math.abs(dA.data[i+2] - dB.data[i+2]);
-        const a = Math.abs(dA.data[i+3] - dB.data[i+3]);
-        maxDiff = Math.max(r,g,b,a);
-      }
-      // Edge-aware tolerance: reduce sensitivity near strong edges
-      if(edgeTol && edgeTol.checked){
-        const gx = grad(dA, i, 1) + grad(dB, i, 1);
-        const gy = grad(dA, i, w) + grad(dB, i, w);
-        const mag = Math.min(255, Math.hypot(gx, gy));
-        // Raise the threshold locally up to +30% on strong edges
-        const tLocal = t * (1 + 0.3*(mag/255));
-        if(maxDiff <= tLocal){
+    let diffCount = 0;
+    if(mode==='pixel'){
+      for(let i=0; i<dA.data.length; i+=4){
+        const px = (i/4) % w; const py = Math.floor((i/4)/w);
+        if(masks.length && masks.some(r=>pointInRect(px,py,r))){
           out.data[i] = dB.data[i] * 0.6; out.data[i+1] = dB.data[i+1] * 0.6; out.data[i+2] = dB.data[i+2] * 0.6; out.data[i+3] = 255; continue;
         }
-      }
-      if(maxDiff > t){
-        diffCount++;
-        out.data[i] = color.r;
-        out.data[i+1] = color.g;
-        out.data[i+2] = color.b;
-        out.data[i+3] = 255;
-      } else {
-        // faint background from B
-        out.data[i] = dB.data[i] * 0.6;
-        out.data[i+1] = dB.data[i+1] * 0.6;
-        out.data[i+2] = dB.data[i+2] * 0.6;
-        out.data[i+3] = 255;
-      }
-    }
-  } else {
-    // SSIM mode: compute per-pixel SSIM using a small window (e.g., 5x5)
-    const win = 5; const half = Math.floor(win/2);
-    // Precompute luminance arrays for speed
-    const YA = new Float32Array(w*h), YB = new Float32Array(w*h);
-    for(let y=0;y<h;y++){
-      for(let x=0;x<w;x++){
-        const i=(y*w+x)*4; YA[y*w+x]=0.2126*dA.data[i]+0.7152*dA.data[i+1]+0.0722*dA.data[i+2];
-        YB[y*w+x]=0.2126*dB.data[i]+0.7152*dB.data[i+1]+0.0722*dB.data[i+2];
-      }
-    }
-    const C1 = 6.5025, C2 = 58.5225; // standard SSIM constants (scaled)
-    function ssimAt(x,y){
-      let muA=0, muB=0, n=0;
-      for(let dy=-half; dy<=half; dy++) for(let dx=-half; dx<=half; dx++){
-        const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue; muA+=YA[ny*w+nx]; muB+=YB[ny*w+nx]; n++; }
-      muA/=n; muB/=n; let varA=0,varB=0,cov=0;
-      for(let dy=-half; dy<=half; dy++) for(let dx=-half; dx<=half; dx++){
-        const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue; const a=YA[ny*w+nx]-muA; const b=YB[ny*w+nx]-muB; varA+=a*a; varB+=b*b; cov+=a*b; }
-      varA/=(n-1); varB/=(n-1); cov/=(n-1);
-      const num = (2*muA*muB + C1) * (2*cov + C2);
-      const den = (muA*muA + muB*muB + C1) * (varA + varB + C2);
-      return den!==0 ? (num/den) : 1;
-    }
-    for(let y=0;y<h;y++){
-      for(let x=0;x<w;x++){
-        const idx=(y*w+x)*4;
-        if(masks.length && masks.some(r=>pointInRect(x,y,r))){
-          out.data[idx]=dB.data[idx]*0.6; out.data[idx+1]=dB.data[idx+1]*0.6; out.data[idx+2]=dB.data[idx+2]*0.6; out.data[idx+3]=255; continue;
+        let maxDiff;
+        if(lumaOnly && lumaOnly.checked){
+          const lA = 0.2126*dA.data[i] + 0.7152*dA.data[i+1] + 0.0722*dA.data[i+2];
+          const lB = 0.2126*dB.data[i] + 0.7152*dB.data[i+1] + 0.0722*dB.data[i+2];
+          maxDiff = Math.abs(lA - lB);
+        } else {
+          const r = Math.abs(dA.data[i] - dB.data[i]);
+          const g = Math.abs(dA.data[i+1] - dB.data[i+1]);
+          const b = Math.abs(dA.data[i+2] - dB.data[i+2]);
+          const a = Math.abs(dA.data[i+3] - dB.data[i+3]);
+          maxDiff = Math.max(r,g,b,a);
         }
-        const s = ssimAt(x,y);
-        if(s < t){ diffCount++; out.data[idx]=color.r; out.data[idx+1]=color.g; out.data[idx+2]=color.b; out.data[idx+3]=255; }
-        else { out.data[idx]=dB.data[idx]*0.6; out.data[idx+1]=dB.data[idx+1]*0.6; out.data[idx+2]=dB.data[idx+2]*0.6; out.data[idx+3]=255; }
+        if(edgeTol && edgeTol.checked){
+          const gx = grad(dA, i, 1) + grad(dB, i, 1);
+          const gy = grad(dA, i, w) + grad(dB, i, w);
+          const mag = Math.min(255, Math.hypot(gx, gy));
+          const tLocal = t * (1 + 0.3*(mag/255));
+          if(maxDiff <= tLocal){
+            out.data[i] = dB.data[i] * 0.6; out.data[i+1] = dB.data[i+1] * 0.6; out.data[i+2] = dB.data[i+2] * 0.6; out.data[i+3] = 255; continue;
+          }
+        }
+        if(maxDiff > t){
+          diffCount++;
+          out.data[i] = color.r; out.data[i+1] = color.g; out.data[i+2] = color.b; out.data[i+3] = 255;
+        } else {
+          out.data[i] = dB.data[i] * 0.6; out.data[i+1] = dB.data[i+1] * 0.6; out.data[i+2] = dB.data[i+2] * 0.6; out.data[i+3] = 255;
+        }
       }
-    }
-  }
-  ctx.putImageData(out, 0, 0);
-  // Update status UI
-  if(diffStatus){
-    diffStatus.style.display='block';
-    diffStatus.style.textAlign='center';
-    diffStatus.style.fontWeight='600';
-    if(diffCount===0){
-      diffStatus.textContent = 'Aucune différence détectée avec le seuil choisi.';
-      diffStatus.style.color = '#0b6e32'; // vert foncé
-      diffStatus.style.background='';
     } else {
-      const total = (out.width||w) * (out.height||h);
-      const pct = Math.min(100, ((diffCount/total)*100).toFixed(3));
-      diffStatus.textContent = `${diffCount.toLocaleString()} pixels différents (~${pct}%)`;
-      diffStatus.style.color = '#b00020'; // rouge
+      const win = 5; const half = Math.floor(win/2);
+      const YA = new Float32Array(w*h), YB = new Float32Array(w*h);
+      for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const i=(y*w+x)*4; YA[y*w+x]=0.2126*dA.data[i]+0.7152*dA.data[i+1]+0.0722*dA.data[i+2]; YB[y*w+x]=0.2126*dB.data[i]+0.7152*dB.data[i+1]+0.0722*dB.data[i+2]; }
+      const C1 = 6.5025, C2 = 58.5225;
+      function ssimAt(x,y){ let muA=0, muB=0, n=0; for(let dy=-half; dy<=half; dy++) for(let dx=-half; dx<=half; dx++){ const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue; muA+=YA[ny*w+nx]; muB+=YB[ny*w+nx]; n++; } muA/=n; muB/=n; let varA=0,varB=0,cov=0; for(let dy=-half; dy<=half; dy++) for(let dx=-half; dx<=half; dx++){ const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue; const a=YA[ny*w+nx]-muA; const b=YB[ny*w+nx]-muB; varA+=a*a; varB+=b*b; cov+=a*b; } varA/=(n-1); varB/=(n-1); cov/=(n-1); const num=(2*muA*muB + C1) * (2*cov + C2); const den=(muA*muA + muB*muB + C1) * (varA + varB + C2); return den!==0 ? (num/den) : 1; }
+      for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const idx=(y*w+x)*4; if(masks.length && masks.some(r=>pointInRect(x,y,r))){ out.data[idx]=dB.data[idx]*0.6; out.data[idx+1]=dB.data[idx+1]*0.6; out.data[idx+2]=dB.data[idx+2]*0.6; out.data[idx+3]=255; continue; } const s = ssimAt(x,y); if(s < t){ diffCount++; out.data[idx]=color.r; out.data[idx+1]=color.g; out.data[idx+2]=color.b; out.data[idx+3]=255; } else { out.data[idx]=dB.data[idx]*0.6; out.data[idx+1]=dB.data[idx+1]*0.6; out.data[idx+2]=dB.data[idx+2]*0.6; out.data[idx+3]=255; } }
     }
-  }
-  hasDiff = true; hasDiffPixels = diffCount>0; updateButtons();
-  running = false; runBtn.removeAttribute('disabled');
+    ctx.putImageData(out, 0, 0);
+    if(diffStatus){ diffStatus.style.display='block'; diffStatus.style.textAlign='center'; diffStatus.style.fontWeight='600'; if(diffCount===0){ diffStatus.textContent='Aucune différence détectée avec le seuil choisi.'; diffStatus.style.color='#0b6e32'; diffStatus.style.background=''; } else { const total=(out.width||w)*(out.height||h); const pct=Math.min(100, ((diffCount/total)*100).toFixed(3)); diffStatus.textContent=`${diffCount.toLocaleString()} pixels différents (~${pct}%)`; diffStatus.style.color='#b00020'; } }
+    hasDiff = true; hasDiffPixels = diffCount>0; updateButtons();
+  running = false; if(diffSpinner){ diffSpinner.classList.add('hidden'); }
   }
 
   // Simple 1px box blur
@@ -368,10 +308,7 @@
   if(maskCanvas && maskToggle){
     maskToggle.addEventListener('click', ()=>{
       if(!(hasDiff && hasDiffPixels)){
-        if(diffStatus){
-          diffStatus.textContent='⚠️ Les zones ignorées ne sont disponibles que si un diff avec des différences est affiché.';
-          diffStatus.style.display='block'; diffStatus.style.color='#b26b00';
-        } else { alert('Aucune différence visuelle : les zones ignorées sont inactives.'); }
+        showWarn('⚠️ Les zones ignorées ne sont disponibles que si un diff avec des différences est affiché.');
         return;
       }
       drawing = !drawing; selectedIndex = -1; moving = false;
@@ -383,10 +320,7 @@
     });
   maskClear && maskClear.addEventListener('click', ()=>{ 
       if(!(hasDiff && hasDiffPixels)){
-        if(diffStatus){
-          diffStatus.textContent='⚠️ Rien à effacer : soit aucun diff, soit aucune différence.';
-          diffStatus.style.display='block'; diffStatus.style.color='#b26b00';
-        } else { alert('Aucun diff avec différences à effacer.'); }
+        showWarn('⚠️ Rien à effacer : soit aucun diff, soit aucune différence.');
         return;
       }
       masks.length = 0; drawMasks(); saveMasks(); 

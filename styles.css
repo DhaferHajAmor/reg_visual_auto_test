@@ -71,6 +71,9 @@ a{color:var(--accent)}
 .canvas{width:100%;border-radius:12px;background:#0b0e1a;border:1px solid var(--border)}
 .help{display:inline-block;width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;background:var(--help-bg);border:1px solid var(--help-border);color:var(--text);font-size:11px;cursor:help}
 .diff-wrap{position:relative}
+.diff-spinner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:row;gap:14px;background:rgba(15,18,34,.55);backdrop-filter:saturate(140%) blur(4px);border:1px solid var(--border);border-radius:12px;font-weight:600;color:var(--text);font-size:14px;letter-spacing:.3px;pointer-events:none;z-index:5}
+.diff-spinner .ring{width:44px;height:44px;border:4px solid rgba(255,255,255,.3);border-top-color:var(--accent);border-radius:50%;animation:spin .9s linear infinite;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+.diff-spinner.hidden{display:none}
 .mask-canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:12px;pointer-events:auto;cursor:default}
 .mask-canvas.drawing{cursor:crosshair}
 .mask-canvas.moving{cursor:move}

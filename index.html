@@ -14,54 +14,36 @@
     <h1>Visual Diff</h1>
     <p class="subtitle">Comparaison visuelle sans installation pour pages et images.</p>
     <div class="hero">
-      <p>Glissez le bookmarklet, puis comparez votre PNG Figma avec n’importe quelle page web. Ou utilisez le diff d’images intégré.</p>
+  <p>Glissez le bookmarklet dans votre barre de favoris pour comparer votre design Figma en direct. Besoin d’un simple diff ? Utilisez le mode image ↔ image.</p>
       <div class="cta-row">
         <a id="bookmarkletLinkTop" class="btn" href="#">Superposition en direct</a>
         <button id="copyBookmarklet" class="btn secondary" type="button">Copier le bookmarklet</button>
-        
-  <label class="sr-only">Thème</label>
-  <button id="themeMoon" class="btn secondary" title="Sombre">🌙</button>
-  <button id="themeSun" class="btn secondary" title="Desjardins">☀️</button>
       </div>
     </div>
   </header>  
 
   <main class="container">
     <nav class="tabs" role="tablist" aria-label="Modes">
-  <button class="tab active" data-tab="bookmarklet" role="tab" aria-selected="true">Superposition (Bookmarklet)</button>
-  <button class="tab" data-tab="image-diff" role="tab" aria-selected="false">Image ↔ Image</button>
+  <button class="tab active" data-tab="image-diff" role="tab" aria-selected="true">Image ↔ Image</button>
+  <button class="tab" data-tab="bookmarklet" role="tab" aria-selected="false">Superposition (Bookmarklet)</button>
     </nav>
 
-    <section id="bookmarklet" class="tabpanel active" role="tabpanel">
-      <h2>Superposition en direct (Bookmarklet)</h2>
-      <ol>
-  <li>Glissez ceci dans votre barre de favoris : <a id="bookmarkletLink" href="#">Superposition en direct</a></li>
-        <li>Visitez n’importe quelle page et cliquez sur le bookmarklet.</li>
-        <li>Importez votre PNG Figma et alignez‑le à l’aide des contrôles.</li>
-      </ol>
-      <details>
-        <summary>À quoi ça sert ?</summary>
-        <p>Il injecte une petite interface dans la page (entièrement côté navigateur). Vous pouvez positionner, mettre à l’échelle et changer le mode de fusion de votre PNG pour comparer le design et le rendu.</p>
-      </details>
-      <div class="tip">Astuce : flèches pour déplacer (Maj = 10 px), +/- pour l’échelle, D pour le mode difference, Échap pour fermer.</div>
-    </section>
-
-    <section id="image-diff" class="tabpanel" role="tabpanel" aria-hidden="true">
-      <h2>Comparaison Image ↔ Image (Diff pixel)</h2>
+    <section id="image-diff" class="tabpanel active" role="tabpanel">
+      <h2>Comparaison Image ↔ Image</h2>
       <div class="dropzones">
         <div class="dropzone" data-side="A">
-          <p>PNG de design (depuis Figma)</p>
+          <p>Image de référence</p>
           <button type="button" class="btn secondary pick">Choisir une image</button>
           <small class="fname"></small>
           <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" />
-          <img alt="Aperçu image A" />
+          <img alt="" aria-hidden="true" />
         </div>
         <div class="dropzone" data-side="B">
-          <p>Capture d’écran PNG/JPG</p>
+          <p>Image à comparer</p>
           <button type="button" class="btn secondary pick">Choisir une image</button>
           <small class="fname"></small>
           <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" />
-          <img alt="Aperçu image B" />
+          <img alt="" aria-hidden="true" />
         </div>
       </div>
   <div class="controls-row" style="justify-content:center">
@@ -91,9 +73,27 @@
       <div id="diffContainer" class="diff-wrap">
         <canvas id="diffCanvas" class="canvas" aria-label="Résultat du diff"></canvas>
         <canvas id="maskCanvas" class="mask-canvas" aria-label="Masques de zones ignorées"></canvas>
+        <div id="diffSpinner" class="diff-spinner hidden" aria-live="polite" aria-atomic="true">
+          <div class="ring" aria-hidden="true"></div>
+          <span>Calcul…</span>
+        </div>
       </div>
   <div class="tip">Déposez deux images ou utilisez les sélecteurs. L’aperçu sous chaque zone montre l’image chargée. Utilisez « Ignorer une zone » pour dessiner un rectangle exclu de la comparaison. Le diff met en évidence les pixels qui diffèrent au‑delà du seuil choisi.</div>
   <div class="tip"><strong>Conseils</strong> : Texte fin → Luminance + Lisser (1 px) + seuil 8–15%. Icônes/solides → Mode Pixel, tolérance bords off, seuil bas. Visuel global → Mode SSIM.</div>
+    </section>
+
+    <section id="bookmarklet" class="tabpanel" role="tabpanel" aria-hidden="true">
+      <h2>Superposition en direct (Bookmarklet)</h2>
+      <ol>
+  <li>Glissez ceci dans votre barre de favoris : <a id="bookmarkletLink" href="#">Superposition en direct</a></li>
+        <li>Visitez n’importe quelle page et cliquez sur le bookmarklet.</li>
+        <li>Importez votre PNG Figma et alignez‑le à l’aide des contrôles.</li>
+      </ol>
+      <details>
+        <summary>À quoi ça sert ?</summary>
+        <p>Il injecte une petite interface dans la page (entièrement côté navigateur). Vous pouvez positionner, mettre à l’échelle et changer le mode de fusion de votre PNG pour comparer le design et le rendu.</p>
+      </details>
+      <div class="tip">Astuce : flèches pour déplacer (Maj = 10 px), +/- pour l’échelle, D pour le mode difference, Échap pour fermer.</div>
     </section>
   </main>
 
@@ -106,6 +106,9 @@
 .visdiff-overlay-root{position:fixed;inset:0;pointer-events:none;z-index:2147483647}
 .visdiff-panel{position:fixed;top:16px;right:16px;background:var(--ov-panel);color:var(--ov-text);border:1px solid var(--ov-border);border-radius:10px;padding:10px;min-width:320px;pointer-events:auto;box-shadow:0 6px 24px rgba(0,0,0,.35);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
 .visdiff-panel h3{margin:0 0 8px 0;font-size:16px}
+.visdiff-close-btn{position:absolute;top:6px;right:6px;width:28px;height:28px;line-height:24px;font-size:18px;font-weight:600;padding:0;background:var(--ov-btn);border:1px solid var(--ov-btn-border);color:var(--ov-btn-text);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.visdiff-close-btn:hover{filter:brightness(1.08)}
+.visdiff-close-btn:active{transform:translateY(1px)}
 .visdiff-row{display:flex;gap:8px;align-items:center;margin:6px 0;flex-wrap:wrap}
 .visdiff-row label{font-size:12px;color:var(--ov-muted)}
 .visdiff-row input[type=range]{width:120px;margin:0}
@@ -118,17 +121,20 @@
 .visdiff-btn.danger{border-color:var(--ov-danger-border);background:var(--ov-danger-bg);color:#ffc8d7}
 .visdiff-stage{position:fixed;inset:0;pointer-events:none}
 .visdiff-floating{position:absolute;left:0;top:0;transform-origin:top left;pointer-events:auto;cursor:move;touch-action:none}
-.visdiff-floating img{display:block;max-width:none;border:3px solid var(--ov-accent);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.35);}
-.visdiff-floating::after{content:"";position:absolute;left:-8px;top:-8px;right:-8px;bottom:-8px;border-radius:10px;pointer-events:none;box-shadow:0 0 0 6px color-mix(in srgb, var(--ov-accent) 16%, transparent);}
+.visdiff-floating img{display:block;max-width:none;border:none;border-radius:0;box-shadow:none;}
+.visdiff-floating::after{content:none;}
 .visdiff-hidden{display:none !important}
 .visdiff-grid{position:fixed;inset:0;pointer-events:none;--s:8px;--o:.2;--c:var(--ov-grid-rgba, rgba(122,162,255,.6));background-image:repeating-linear-gradient(0deg,var(--c) 0 1px,transparent 1px,var(--s)),repeating-linear-gradient(90deg,var(--c) 0 1px,transparent 1px,var(--s));opacity:var(--o)}
 .visdiff-loupe{position:fixed;width:160px;height:160px;border:2px solid var(--ov-accent);border-radius:50%;overflow:hidden;pointer-events:none;box-shadow:0 4px 18px rgba(0,0,0,.4);z-index:2147483647}
 .visdiff-loupe img{position:absolute;transform-origin:top left;image-rendering:pixelated}
 .visdiff-handle{position:fixed;top:0;bottom:0;width:2px;background:var(--ov-accent);box-shadow:0 0 0 1px color-mix(in srgb, var(--ov-accent) 30%, transparent);cursor:ew-resize;pointer-events:auto}
 .visdiff-knob{position:absolute;top:50%;left:-8px;width:18px;height:18px;border-radius:50%;background:var(--ov-accent);border:2px solid var(--ov-knob-border);transform:translateY(-50%)}
-.visdiff-reopen{position:fixed;top:16px;right:16px;background:var(--ov-reopen-bg);border:1px solid var(--ov-reopen-border);color:var(--ov-text);border-radius:999px;padding:6px 10px;pointer-events:auto;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.35);}
 .visdiff-crop-layer{position:fixed;inset:0;cursor:crosshair;pointer-events:auto;background:rgba(0,0,0,.25);z-index:2147483646}
 .visdiff-crop-rect{position:absolute;border:2px dashed var(--ov-accent);background:rgba(0,135,62,.12)}
+.visdiff-new{outline:2px dashed #ff9800;outline-offset:2px;position:relative}
+.visdiff-new::after{content:'Nouveau';position:absolute;top:-10px;right:-2px;background:#ff9800;color:#fff;font:10px/1.2 system-ui;padding:2px 4px;border-radius:4px;pointer-events:none}
+.visdiff-new-part{outline:2px solid #ffc107;outline-offset:2px;position:relative}
+.visdiff-new-part::after{content:'Partiel';position:absolute;top:-10px;right:-2px;background:#ffc107;color:#222;font:10px/1.2 system-ui;padding:2px 4px;border-radius:4px;pointer-events:none}
 `;d.documentElement.appendChild(st);
 const root=d.createElement('div');root.className='visdiff-overlay-root visdiff-hidden';
 const stage=d.createElement('div');stage.className='visdiff-stage';root.appendChild(stage);
@@ -136,34 +142,37 @@ const grid=d.createElement('div');grid.className='visdiff-grid visdiff-hidden';s
 const float=d.createElement('div');float.className='visdiff-floating';const img=d.createElement('img');img.alt='Overlay';float.appendChild(img);stage.appendChild(float);
 const loupe=d.createElement('div');loupe.className='visdiff-loupe visdiff-hidden';const lImg=d.createElement('img');loupe.appendChild(lImg);stage.appendChild(loupe);
 const handle=d.createElement('div');handle.className='visdiff-handle visdiff-hidden';const knob=d.createElement('div');knob.className='visdiff-knob';handle.appendChild(knob);stage.appendChild(handle);
+// Split-view wrapper for performant masking (instead of clip-path)
+const splitWrapper=d.createElement('div');
+splitWrapper.className='visdiff-split-wrapper';
+splitWrapper.style.cssText='position:fixed;top:0;bottom:0;left:0;overflow:hidden;pointer-events:auto;';
+// move float inside wrapper so it gets clipped by width
+try{ stage.removeChild(float); }catch(_){}
+splitWrapper.appendChild(float);
+stage.appendChild(splitWrapper);
+// Ensure handle stays on top of wrapper for interactions
+try{ stage.appendChild(handle); }catch(_){}
 // Crop layer (for area selection)
 const cropLayer=d.createElement('div');cropLayer.className='visdiff-crop-layer visdiff-hidden';const cropRect=d.createElement('div');cropRect.className='visdiff-crop-rect';cropLayer.appendChild(cropRect);root.appendChild(cropLayer);
-const panel=d.createElement('div');panel.className='visdiff-panel visdiff-hidden';panel.innerHTML=`<div class=\"visdiff-header\"><h3 style=\"margin:0;font-size:15px\">Superposition visuelle</h3><div class=\"visdiff-theme-switch\"><button id=\"vdthemeAuto\" class=\"visdiff-btn\" type=\"button\" title=\"Thème auto (système)\">🖥️</button><button id=\"vdthemeDark\" class=\"visdiff-btn\" type=\"button\" title=\"Thème sombre\">🌙</button><button id=\"vdthemeDesj\" class=\"visdiff-btn\" type=\"button\" title=\"Thème Desjardins\">☀️</button></div></div>
-<div class=\"visdiff-row\"><button id=\"vdpick\" class=\"visdiff-btn\" type=\"button\">Choisir une image</button><small id=\"vdfname\" style=\"color:var(--ov-muted)\"></small><input type=\"file\" accept=\"image/*\" id=\"vdupload\" aria-label=\"Importer une image\" style=\"display:none\"></div>
-<div class=\"visdiff-row\"><label>Opacité</label><input type=\"range\" id=\"vdopacity\" min=\"0\" max=\"100\" value=\"60\"><span id=\"vdopval\">60%</span><label>Échelle</label><input type=\"range\" id=\"vdscale\" min=\"10\" max=\"400\" value=\"100\"><span id=\"vdscval\">100%</span></div>
-<div class=\"visdiff-row\"><label>X</label><input type=\"number\" id=\"vdx\" value=\"0\" style=\"width:80px\"><label>Y</label><input type=\"number\" id=\"vdy\" value=\"0\" style=\"width:80px\"></div>
-<div class=\"visdiff-row\"><label>Fusion</label><select id=\"vdblend\"><option value=\"normal\">normal</option><option value=\"multiply\">multiply</option><option value=\"screen\">screen</option><option value=\"overlay\">overlay</option><option value=\"darken\">darken</option><option value=\"lighten\">lighten</option><option value=\"difference\">difference</option><option value=\"color-dodge\">color-dodge</option><option value=\"color-burn\">color-burn</option><option value=\"hard-light\">hard-light</option><option value=\"soft-light\">soft-light</option></select></div>
-<div class=\"visdiff-row\"><label>Grille</label><input type=\"checkbox\" id=\"vdgrid\"><label>Pas</label><input type=\"number\" id=\"vdgridsp\" min=\"4\" max=\"64\" value=\"8\" style=\"width:70px\"><label>Opacité</label><input type=\"range\" id=\"vdgrido\" min=\"0\" max=\"100\" value=\"20\"></div>
-<div class=\"visdiff-row\"><label>Couleur de la grille</label><span class=\"visdiff-help\" title=\"Change uniquement la couleur du quadrillage d’alignement.\">i</span><input type=\"color\" id=\"vdgridc\" value=\"#7aa2ff\"></div>
-<div class=\"visdiff-row\"><label>Loupe</label><input type=\"checkbox\" id=\"vdloupe\"><label>Taille</label><input type=\"range\" id=\"vdloupes\" min=\"100\" max=\"300\" value=\"160\"><label>Zoom</label><input type=\"range\" id=\"vdloupez\" min=\"200\" max=\"800\" value=\"300\"></div>
-<div class=\"visdiff-row\"><label>Curseur</label><input type=\"checkbox\" id=\"vdsld\"><label>Position</label><input type=\"range\" id=\"vdsldp\" min=\"0\" max=\"100\" value=\"50\"></div>
-<div class=\"visdiff-row\"><label>Auto‑masquer le panneau</label><input type=\"checkbox\" id=\"vdautoui\"></div>
-<div class=\"visdiff-buttons\"><button id=\"vdexport\" class=\"visdiff-btn\">Exporter l\'overlay</button><button id=\"vdcenter\" class=\"visdiff-btn\">Centrer overlay</button><button id=\"vdhide\" class=\"visdiff-btn\">Masquer overlay</button></div>
-<div class=\"visdiff-buttons\"><button id=\"vdfit\" class=\"visdiff-btn\">Ajuster au viewport</button><button id=\"vdreset\" class=\"visdiff-btn\">Réinitialiser</button><button id=\"vdclose\" class=\"visdiff-btn danger\">Fermer</button></div>
-<div class=\"visdiff-row\" style=\"font-size:12px;color:#a7acc6\">Flèches: déplacer | +/-: échelle | D: difference | G: grille | L: loupe | S: curseur | X: export | P: capture | H: UI | U: auto‑masque | Échap: fermer</div>`;
+const panel=d.createElement('div');panel.className='visdiff-panel';panel.innerHTML=`<div class="visdiff-header" style="position:relative;padding-right:34px"><h3 style="margin:0;font-size:15px">Superposition visuelle</h3><button id="vdclose" class="visdiff-close-btn" aria-label="Fermer" title="Fermer" type="button">×</button></div>
+<div class="visdiff-row"><button id="vdpick" class="visdiff-btn" type="button">Choisir une image</button><small id="vdfname" style="color:var(--ov-muted)"></small><input type="file" accept="image/*" id="vdupload" aria-label="Importer une image" style="display:none"></div>
+<div class="visdiff-row"><label>Opacité</label><input type="range" id="vdopacity" min="0" max="100" value="60"><span id="vdopval">60%</span><label>Échelle</label><input type="range" id="vdscale" min="10" max="400" value="100"><span id="vdscval">100%</span></div>
+<div class="visdiff-row"><label>X</label><input type="number" id="vdx" value="0" style="width:80px"><label>Y</label><input type="number" id="vdy" value="0" style="width:80px"></div>
+<div class="visdiff-row"><label>Fusion</label><select id="vdblend"><option value="normal">normal</option><option value="multiply">multiply</option><option value="screen">screen</option><option value="overlay">overlay</option><option value="darken">darken</option><option value="lighten">lighten</option><option value="difference">difference</option><option value="color-dodge">color-dodge</option><option value="color-burn">color-burn</option><option value="hard-light">hard-light</option><option value="soft-light">soft-light</option></select></div>
+<div class="visdiff-row"><label>Grille</label><input type="checkbox" id="vdgrid"><label>Pas</label><input type="number" id="vdgridsp" min="4" max="64" value="8" style="width:70px"><label>Opacité</label><input type="range" id="vdgrido" min="0" max="100" value="20"></div>
+<div class="visdiff-row"><label>Couleur de la grille</label><span class="visdiff-help" title="Change uniquement la couleur du quadrillage d’alignement.">i</span><input type="color" id="vdgridc" value="#7aa2ff"></div>
+<div class="visdiff-row"><label>Loupe</label><input type="checkbox" id="vdloupe"><label>Taille</label><input type="range" id="vdloupes" min="100" max="300" value="160"><label>Zoom</label><input type="range" id="vdloupez" min="200" max="800" value="300"></div>
+<div class="visdiff-row"><label>Curseur</label><input type="checkbox" id="vdsld"><label>Position</label><input type="range" id="vdsldp" min="0" max="100" value="50"></div>
+<!-- Option 'Fixe viewport' supprimée: comportement désormais implicite (overlay reste fixe à l'écran lors du scroll) -->
+<div class="visdiff-buttons"><button id="vdexport" class="visdiff-btn">Exporter l'overlay</button><button id="vdcenter" class="visdiff-btn">Centrer overlay</button><button id="vdhide" class="visdiff-btn">Masquer overlay</button></div>
+<div class="visdiff-buttons"><button id="vdadapt" class="visdiff-btn">Adapter dimensions overlay</button><button id="vdreset" class="visdiff-btn">Réinitialiser</button></div>
+<div class="visdiff-row" style="font-size:12px;color:#a7acc6">Flèches: déplacer | +/-: échelle | D: difference | G: grille | L: loupe | S: curseur | X: export | P: capture | H: UI | Échap: fermer</div>`;
 root.appendChild(panel);d.documentElement.appendChild(root);
-const reopen=document.createElement('button');reopen.className='visdiff-reopen visdiff-hidden';reopen.textContent='Afficher le panneau';root.appendChild(reopen);
-// Theme variables applied to overlay root based on persisted theme
-const themeKey='VD::theme';let th='desjardins';try{const t=localStorage.getItem(themeKey);if(t)th=t}catch(_){ }
-if(th==='auto'){
-  try{ th = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }catch(_){ th='dark'; }
-}
+// Thème fixé: Desjardins
 const palettes={
-  dark:{panel:'#191c2f',text:'#f2f4ff',border:'#2a2f4a',muted:'#a7acc6',btn:'#222741',btnBorder:'#2a2f4a',btnText:'#f2f4ff',reopenBg:'#2a335a',reopenBorder:'#3a4474',accent:'#7aa2ff',knobBorder:'#0b0e1a',dangerBg:'#2b0f1a',dangerBorder:'#4a2030'},
-  light:{panel:'#ffffff',text:'#0b0e1a',border:'#e2e5ee',muted:'#5a607a',btn:'#eef1fd',btnBorder:'#d9e0fb',btnText:'#182046',reopenBg:'#eef1fd',reopenBorder:'#d9e0fb',accent:'#355bd6',knobBorder:'#e6e9ee',dangerBg:'#fde8ee',dangerBorder:'#f5b3c7'},
-  desjardins:{panel:'#ffffff',text:'#0f231a',border:'#cfe7da',muted:'#55655d',btn:'#e8f3ee',btnBorder:'#cfe7da',btnText:'#0f231a',reopenBg:'#e8f3ee',reopenBorder:'#cfe7da',accent:'#00873e',knobBorder:'#dfeae6',dangerBg:'#fde8ee',dangerBorder:'#f5b3c7'}
+  desjardins:{panel:'#ffffff',text:'#0f231a',border:'#cfe7da',muted:'#55655d',btn:'#e8f3ee',btnBorder:'#cfe7da',btnText:'#0f231a',accent:'#00873e',knobBorder:'#dfeae6',dangerBg:'#fde8ee',dangerBorder:'#f5b3c7'}
 };
-const pal=palettes[th]||palettes.desjardins;
+const pal=palettes.desjardins;
 root.style.setProperty('--ov-panel', pal.panel);
 root.style.setProperty('--ov-text', pal.text);
 root.style.setProperty('--ov-border', pal.border);
@@ -171,38 +180,65 @@ root.style.setProperty('--ov-muted', pal.muted);
 root.style.setProperty('--ov-btn', pal.btn);
 root.style.setProperty('--ov-btn-border', pal.btnBorder);
 root.style.setProperty('--ov-btn-text', pal.btnText);
-root.style.setProperty('--ov-reopen-bg', pal.reopenBg);
-root.style.setProperty('--ov-reopen-border', pal.reopenBorder);
 root.style.setProperty('--ov-accent', pal.accent);
 root.style.setProperty('--ov-knob-border', pal.knobBorder);
 root.style.setProperty('--ov-danger-bg', pal.dangerBg);
 root.style.setProperty('--ov-danger-border', pal.dangerBorder);
 let open=false,showUI=true;
 const $=sel=>panel.querySelector(sel);
-const btnPick=$('#vdpick');let fileInput=$('#vdupload');const fnLabel=$('#vdfname');const opInput=$('#vdopacity');const opVal=$('#vdopval');const scInput=$('#vdscale');const scVal=$('#vdscval');const xInput=$('#vdx');const yInput=$('#vdy');const blendSel=$('#vdblend');const btnHide=$('#vdhide');const btnCenter=$('#vdcenter');const btnFit=$('#vdfit');const btnReset=$('#vdreset');const btnClose=$('#vdclose');
+const btnPick=$('#vdpick');let fileInput=$('#vdupload');const fnLabel=$('#vdfname');const opInput=$('#vdopacity');const opVal=$('#vdopval');const scInput=$('#vdscale');const scVal=$('#vdscval');const xInput=$('#vdx');const yInput=$('#vdy');const blendSel=$('#vdblend');const btnHide=$('#vdhide');const btnCenter=$('#vdcenter');const btnAdapt=$('#vdadapt');const btnReset=$('#vdreset');const btnClose=$('#vdclose');
+// Viewport lock (implicit now, no UI checkbox)
+// (Options détection nouveautés retirées)
+// (diagnostic fusionné dans le bouton d'adaptation)
 const gridChk=$('#vdgrid');const gridSp=$('#vdgridsp');const gridOp=$('#vdgrido');const gridColor=$('#vdgridc');
 const loupeChk=$('#vdloupe');const loupeSize=$('#vdloupes');const loupeZoom=$('#vdloupez');
 const sldChk=$('#vdsld');const sldPos=$('#vdsldp');
 const btnExport=$('#vdexport');
-const autoChk=$('#vdautoui');
 let posX=0,posY=0,scale=1,opacity=.6,blend='normal';
+// Viewport lock state: when active, overlay stays visually fixed during scroll
+// Anchor mode: 'document' (overlay scrolls with page content) or 'viewport' (stays fixed)
+let anchorMode='document';
 let prevOpacityForDiff=null;
 let gOn=false,gSp=8,gOp=.2,gCol='#7aa2ff';
 let lOn=false,lSize=160,lZ=3;
 let sOn=false,sPct=50;
 let lastURL=null;
-let autoUI=false,autoTimer=null;
-const KEY='VD::'+location.host;function save(){clearTimeout(save.t);save.t=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify({posX,posY,scale,opacity,blend,gOn,gSp,gOp,gCol,lOn,lSize,lZ,sOn,sPct,autoUI}))}catch(_){}},300)}
-function load(){try{const v=JSON.parse(localStorage.getItem(KEY)||'{}');if(typeof v.posX==='number')posX=v.posX;if(typeof v.posY==='number')posY=v.posY;if(typeof v.scale==='number')scale=v.scale;if(typeof v.opacity==='number')opacity=v.opacity;if(typeof v.blend==='string')blend=v.blend;gOn=!!v.gOn;gSp=v.gSp||8;gOp=typeof v.gOp==='number'?v.gOp:.2;gCol=v.gCol||'#7aa2ff';lOn=!!v.lOn;lSize=v.lSize||160;lZ=v.lZ||3;sOn=!!v.sOn;sPct=(typeof v.sPct==='number'?v.sPct:50);autoUI=!!v.autoUI}catch(_){} }
+// Track if user manually moved/adjusted overlay to avoid intrusive auto recenters
+let userMovedOverlay=false;
+[xInput,yInput,scInput,opInput].forEach(el=>{ if(el) el.addEventListener('input', ()=>{ userMovedOverlay=true; }); });
+float.addEventListener('pointerdown', ()=>{ userMovedOverlay=true; });
+// (fonctionnalité Nouveaux éléments supprimée)
+// Update split wrapper width and handle position based on sPct/sOn
+function updateSplitVisual(){
+  const w=window.innerWidth||0; const pct=Math.max(0,Math.min(100,Number(sPct)||0));
+  const sPx=Math.round((pct/100)*w);
+  if(sOn){
+    splitWrapper.style.width=sPx+'px';
+    // Anchor handle at left then translate to desired x
+    handle.style.left='0px';
+    handle.style.transform=`translateX(${Math.max(0,Math.min(sPx,w-2))}px)`;
+  } else {
+    splitWrapper.style.width=w+'px';
+    handle.style.transform='';
+  }
+}
+window.addEventListener('resize', updateSplitVisual);
+const KEY='VD::'+location.host;function save(){clearTimeout(save.t);save.t=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify({posX,posY,scale,opacity,blend,gOn,gSp,gOp,gCol,lOn,lSize,lZ,sOn,sPct,anchorMode}))}catch(_){}},300)}
+function load(){try{const v=JSON.parse(localStorage.getItem(KEY)||'{}');if(typeof v.posX==='number')posX=v.posX;if(typeof v.posY==='number')posY=v.posY;if(typeof v.scale==='number')scale=v.scale;if(typeof v.opacity==='number')opacity=v.opacity;if(typeof v.blend==='string')blend=v.blend;gOn=!!v.gOn;gSp=v.gSp||8;gOp=typeof v.gOp==='number'?v.gOp:.2;gCol=v.gCol||'#7aa2ff';lOn=!!v.lOn;lSize=v.lSize||160;lZ=v.lZ||3;sOn=!!v.sOn;sPct=(typeof v.sPct==='number'?v.sPct:50);if(v.anchorMode==='viewport'||v.anchorMode==='document')anchorMode=v.anchorMode;}catch(_){} }
 function hexToRgb(h){const m=/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(h);return m?{r:parseInt(m[1],16),g:parseInt(m[2],16),b:parseInt(m[3],16)}:{r:122,g:162,b:255}}
-function apply(){const dispX=posX-window.scrollX;const dispY=posY-window.scrollY;float.style.left=dispX+'px';float.style.top=dispY+'px';float.style.transform=`scale(${scale})`;img.style.opacity=opacity;img.style.mixBlendMode=blend;xInput.value=String(Math.round(posX));yInput.value=String(Math.round(posY));scInput.value=String(Math.round(scale*100));scVal.textContent=Math.round(scale*100)+'%';opInput.value=String(Math.round(opacity*100));opVal.textContent=Math.round(opacity*100)+'%';
+function apply(){
+  const dispX = anchorMode==='document'? (posX - window.scrollX) : posX;
+  const dispY = anchorMode==='document'? (posY - window.scrollY) : posY;
+  float.style.left=dispX+'px';float.style.top=dispY+'px';float.style.transform=`scale(${scale})`;img.style.opacity=opacity;img.style.mixBlendMode=blend;
+  xInput.value=String(Math.round(posX));yInput.value=String(Math.round(posY));
+  scInput.value=String(Math.round(scale*100));scVal.textContent=Math.round(scale*100)+'%';opInput.value=String(Math.round(opacity*100));opVal.textContent=Math.round(opacity*100)+'%';
 grid.classList.toggle('visdiff-hidden',!gOn);gridSp.value=String(gSp);gridOp.value=String(Math.round(gOp*100));gridChk.checked=gOn;gridColor.value=gCol;const c=hexToRgb(gCol);grid.style.setProperty('--s',gSp+'px');grid.style.setProperty('--o',String(gOp));grid.style.setProperty('--c',`rgba(${c.r},${c.g},${c.b},0.6)`);
 loupe.classList.toggle('visdiff-hidden',!lOn||!img.src);loupe.style.width=lSize+'px';loupe.style.height=lSize+'px';loupeChk.checked=lOn;loupeSize.value=String(lSize);loupeZoom.value=String(Math.round(lZ*100));
 // slider
-sldChk.checked=sOn;sldPos.value=String(Math.round(sPct));const sPx=Math.round((sPct/100)*window.innerWidth);handle.classList.toggle('visdiff-hidden',!sOn);handle.style.left=Math.max(0,Math.min(sPx,window.innerWidth-2))+'px';
-stage.style.clipPath=sOn?`inset(0 ${Math.max(0,window.innerWidth-sPx)}px 0 0)`:'initial';
+sldChk.checked=sOn;sldPos.value=String(Math.round(sPct));handle.classList.toggle('visdiff-hidden',!sOn);
+updateSplitVisual();
 save()}
-function reset(){posX=0;posY=0;scale=1;opacity=.6;blend='normal';gOn=false;gSp=8;gOp=.2;gCol='#7aa2ff';lOn=false;lSize=160;lZ=3;apply()}
+function reset(){posX=0;posY=0;scale=1;opacity=.6;blend='normal';gOn=false;gSp=8;gOp=.2;gCol='#7aa2ff';lOn=false;lSize=160;lZ=3;apply();}
 function setBlend(b){
   // Auto-max opacity when entering difference for visibility; restore when leaving
   if(b==='difference' && blend!=="difference"){
@@ -215,15 +251,154 @@ function setBlend(b){
   blend=b; if(blendSel){ blendSel.value=b; }
   apply();
 }
-function openUI(){open=true;root.classList.remove('visdiff-hidden');panel.classList.toggle('visdiff-hidden',!showUI);reopen.classList.toggle('visdiff-hidden',showUI||!open)}
-function closeUI(){open=false;root.classList.add('visdiff-hidden');panel.classList.add('visdiff-hidden');reopen.classList.add('visdiff-hidden')}
-function toggleUI(force){if(typeof force==='boolean')showUI=force;else showUI=!showUI;panel.classList.toggle('visdiff-hidden',!showUI);reopen.classList.toggle('visdiff-hidden',showUI||!open)}
+function openUI(){open=true;root.classList.remove('visdiff-hidden');panel.classList.toggle('visdiff-hidden',!showUI)}
+function closeUI(){open=false;root.classList.add('visdiff-hidden');panel.classList.add('visdiff-hidden')}
+function toggleUI(force){if(typeof force==='boolean')showUI=force;else showUI=!showUI;panel.classList.toggle('visdiff-hidden',!showUI)}
 // Full teardown: revoke blob URL, remove injected DOM and globals
+// Fonction de diagnostic avec corrections automatiques
+function diagnoseOverlayFit(ev) {
+  const verbose = !!(ev && ev.altKey);
+  const started = performance.now();
+  const groupLabel = verbose ? '🔬 Diagnostic overlay (verbose)' : '🔬 Diagnostic overlay';
+  if(console.groupCollapsed) console.groupCollapsed(groupLabel);
+  if (!img || !img.src){ console.error('❌ Aucune image chargée'); if(console.groupEnd) console.groupEnd(); return; }
+
+  const naturalW = img.naturalWidth;
+  const naturalH = img.naturalHeight;
+  let overlayW = naturalW * scale;
+  let overlayH = naturalH * scale;
+
+  const methods = {
+    scroll:{ w:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth), h:Math.max(document.documentElement.scrollHeight,document.body.scrollHeight) },
+    offset:{ w:Math.max(document.documentElement.offsetWidth,document.body.offsetWidth), h:Math.max(document.documentElement.offsetHeight,document.body.offsetHeight) },
+    client:{ w:Math.max(document.documentElement.clientWidth,document.body.clientWidth), h:Math.max(document.documentElement.clientHeight,document.body.clientHeight) },
+    rect:(()=>{ const html=document.documentElement.getBoundingClientRect(); const body=document.body.getBoundingClientRect(); return { w:Math.max(html.width,body.width), h:Math.max(html.height,body.height) }; })()
+  };
+
+  let best=null, smallest=Infinity;
+  for(const [k,d] of Object.entries(methods)){
+    const diff = Math.abs(overlayW-d.w)+Math.abs(overlayH-d.h);
+    if(diff<smallest){ smallest=diff; best={method:k,diffW:Math.abs(overlayW-d.w),diffH:Math.abs(overlayH-d.h),dims:d}; }
+    if(verbose) console.log(` · ${k}: ${d.w} x ${d.h} (Δ ${Math.abs(overlayW-d.w).toFixed(1)} / ${Math.abs(overlayH-d.h).toFixed(1)})`);
+  }
+  if(verbose) console.log(`✅ Méthode retenue: ${best.method} (écart total ${(best.diffW+best.diffH).toFixed(1)})`);
+
+  const bodyStyles = window.getComputedStyle(document.body);
+  const zoomOuter = window.outerWidth && window.innerWidth ? +(window.outerWidth/window.innerWidth).toFixed(2) : 1;
+  const dpr = window.devicePixelRatio || 1;
+
+  let corrections=0; const notes=[];
+
+  // Ajustement échelle (limite variation)
+  if(best.diffW>2 || best.diffH>2){
+    const targetScale = Math.min(best.dims.w / naturalW, best.dims.h / naturalH);
+    const delta = Math.abs(targetScale - scale);
+    if(delta > 0.005 && delta < 0.5){
+      scale = targetScale; scInput.value=String(Math.round(scale*100)); overlayW=naturalW*scale; overlayH=naturalH*scale; corrections++; notes.push(`Échelle → ${Math.round(scale*100)}%`);
+    } else if(verbose){ console.log('Échelle: ajustement ignoré (delta trop faible ou trop grand)'); }
+  }
+
+  // Recentrage si pas d'action utilisateur préalable
+  if(!userMovedOverlay){
+    const curCX = posX + overlayW/2; const curCY = posY + overlayH/2;
+    const tgtCX = best.dims.w/2; const tgtCY = best.dims.h/2;
+    if(Math.abs(curCX-tgtCX)>10 || Math.abs(curCY-tgtCY)>10){
+      posX = tgtCX - overlayW/2; posY = tgtCY - overlayH/2; corrections++; notes.push('Recentrage');
+    }
+  } else if(verbose) { console.log('Recentrage sauté (utilisateur a déjà déplacé)'); }
+
+  // Scrollbars compensation dynamique
+  const vBar = window.innerWidth - document.documentElement.clientWidth; // largeur barre vert.
+  const hBar = window.innerHeight - document.documentElement.clientHeight;
+  if(vBar>0 && posX + overlayW > best.dims.w - vBar){ posX = best.dims.w - overlayW - vBar; corrections++; notes.push('Ajustement barre verticale'); }
+  if(hBar>0 && posY + overlayH > best.dims.h - hBar){ posY = best.dims.h - overlayH - hBar; corrections++; notes.push('Ajustement barre horizontale'); }
+
+  if(corrections){ apply(); updateLockOffsets(); }
+
+  // Vérification finale
+  const finalW = naturalW*scale; const finalH = naturalH*scale;
+  const finalDiffW = Math.abs(finalW - best.dims.w); const finalDiffH = Math.abs(finalH - best.dims.h);
+  const success = finalDiffW<=2 && finalDiffH<=2;
+
+  if(verbose){
+    console.log('Résultat final:', { overlay:`${Math.round(finalW)}x${Math.round(finalH)}`, page:`${best.dims.w}x${best.dims.h}`, diff:`${finalDiffW.toFixed(1)} / ${finalDiffH.toFixed(1)}` });
+    console.log('Styles body margin/padding:', bodyStyles.margin, bodyStyles.padding);
+    console.log('Zoom outer ratio:', zoomOuter, 'DPR:', dpr);
+  }
+
+  // Toast helper
+  function showToast(msg){
+    let t=document.querySelector('.visdiff-toast');
+    if(!t){ t=document.createElement('div'); t.className='visdiff-toast'; t.style.cssText='position:absolute;left:10px;right:10px;bottom:8px;padding:6px 10px;font:12px system-ui;background:var(--ov-panel);color:var(--ov-text);border:1px solid var(--ov-border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.35);pointer-events:none;opacity:0;transition:opacity .25s'; panel.appendChild(t); }
+    t.textContent=msg; requestAnimationFrame(()=>{ t.style.opacity='1'; }); clearTimeout(t._h); t._h=setTimeout(()=>{ t.style.opacity='0'; }, 2500);
+  }
+
+  if(corrections){
+    showToast('Corrections: '+notes.join(', '));
+  } else {
+    showToast(success ? 'Déjà optimal' : 'Diff résiduelle '+finalDiffW.toFixed(1)+'px/'+finalDiffH.toFixed(1)+'px');
+  }
+
+  if(!verbose){
+    console.log(`Diagnostic: ${corrections} correction(s). Diff finale ${finalDiffW.toFixed(1)} / ${finalDiffH.toFixed(1)}${success?' ✅':''}`);
+  }
+  if(console.groupEnd) console.groupEnd();
+  const elapsed = (performance.now()-started).toFixed(1);
+  if(verbose) console.log('⏱ Durée ms:', elapsed);
+  updateLockOffsets();
+  return { corrections, finalDiffW, finalDiffH, scale, posX, posY };
+}
+
+// Fonction d'auto-correction au chargement de l'image
+function autoCorrectOnImageLoad() {
+  if (!img || !img.src) return;
+
+  console.log('🚀 AUTO-CORRECTION: Analyse automatique au chargement');
+
+  // Attendre que l'image soit complètement chargée
+  if (img.complete) {
+    // Délai court pour s'assurer que tout est prêt
+    setTimeout(() => {
+      const overlayWidth = img.naturalWidth * scale;
+      const overlayHeight = img.naturalHeight * scale;
+
+      // Vérifier s'il y a un décalage important
+      const pageWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
+      const pageHeight = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+
+      const diffWidth = Math.abs(overlayWidth - pageWidth);
+      const diffHeight = Math.abs(overlayHeight - pageHeight);
+
+      if (diffWidth > 10 || diffHeight > 10) {
+        console.log('⚠️ Décalage détecté, correction automatique...');
+        diagnoseOverlayFit();
+      } else {
+        console.log('✅ Pas de décalage significatif détecté');
+      }
+    }, 500);
+  } else {
+    // Si l'image n'est pas encore chargée, attendre l'événement load
+    img.addEventListener('load', () => {
+      setTimeout(() => {
+        autoCorrectOnImageLoad();
+      }, 500);
+    });
+  }
+}
+
+// Activer l'auto-correction quand une nouvelle image est chargée
+const originalHandleFileSelection = window.handleFileSelection;
+if (typeof originalHandleFileSelection === 'function') {
+  window.handleFileSelection = function(...args) {
+    originalHandleFileSelection.apply(this, args);
+    setTimeout(autoCorrectOnImageLoad, 1000);
+  };
+}
+
 function destroyOverlay(){
   try{ if(lastURL){ URL.revokeObjectURL(lastURL); lastURL=null; } }catch(_){ }
   try{ if(root && root.parentNode){ root.parentNode.removeChild(root); } }catch(_){ }
   try{ if(st && st.parentNode){ st.parentNode.removeChild(st); } }catch(_){ }
-  try{ if(reopen && reopen.parentNode){ reopen.parentNode.removeChild(reopen); } }catch(_){ }
   try{ delete window.__VIS_DIFF__; }catch(_){ }
 }
 function handleFileSelection(e){
@@ -231,7 +406,7 @@ function handleFileSelection(e){
   fnLabel.textContent=f.name||'';
   try{ if(lastURL) URL.revokeObjectURL(lastURL); }catch(_){ }
   const url=URL.createObjectURL(f); lastURL=url;
-  img.onload=()=>{ lImg.src=img.src; float.classList.remove('visdiff-hidden'); apply(); };
+  img.onload=()=>{ lImg.src=img.src; float.classList.remove('visdiff-hidden'); apply(); updateLockOffsets(); };
   img.onerror=()=>{ alert('Impossible de charger cette image'); };
   img.src=url;
 }
@@ -247,60 +422,46 @@ btnPick.addEventListener('click', ()=>{
   }catch(_){ }
 });
 // Close overlay (full destroy)
-// Theme buttons inside overlay header
-const btnThemeAuto=panel.querySelector('#vdthemeAuto');
-const btnThemeDark=panel.querySelector('#vdthemeDark');
-const btnThemeDesj=panel.querySelector('#vdthemeDesj');
-function applyThemeButtons(t){
-  if(btnThemeAuto) btnThemeAuto.disabled = (t==='auto');
-  if(btnThemeDark) btnThemeDark.disabled = (t==='dark');
-  if(btnThemeDesj) btnThemeDesj.disabled = (t==='desjardins');
-}
-function resolveAuto(){
-  try{ return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark':'light'; }catch(_){ return 'dark'; }
-}
-function setOverlayTheme(name){
-  const actual = name==='auto'? resolveAuto(): name;
-  const pal=palettes[actual]||palettes.desjardins;
-  root.style.setProperty('--ov-panel', pal.panel);
-  root.style.setProperty('--ov-text', pal.text);
-  root.style.setProperty('--ov-border', pal.border);
-  root.style.setProperty('--ov-muted', pal.muted);
-  root.style.setProperty('--ov-btn', pal.btn);
-  root.style.setProperty('--ov-btn-border', pal.btnBorder);
-  root.style.setProperty('--ov-btn-text', pal.btnText);
-  root.style.setProperty('--ov-reopen-bg', pal.reopenBg);
-  root.style.setProperty('--ov-reopen-border', pal.reopenBorder);
-  root.style.setProperty('--ov-accent', pal.accent);
-  root.style.setProperty('--ov-knob-border', pal.knobBorder);
-  root.style.setProperty('--ov-danger-bg', pal.dangerBg);
-  root.style.setProperty('--ov-danger-border', pal.dangerBorder);
-  applyThemeButtons(name);
-  try{ localStorage.setItem('VD::theme', name); }catch(_){ }
-  // Reflect on page root (so main site theme stays in sync)
-  const pageRoot=document.documentElement;
-  if(name==='desjardins'){ pageRoot.setAttribute('data-theme','desjardins'); }
-  else if(name==='dark'){ pageRoot.removeAttribute('data-theme'); }
-  else if(name==='auto'){ const r=resolveAuto(); if(r==='light') pageRoot.setAttribute('data-theme','light'); else pageRoot.removeAttribute('data-theme'); }
-  else if(name==='light'){ pageRoot.setAttribute('data-theme','light'); }
-}
-if(btnThemeAuto){ btnThemeAuto.addEventListener('click',()=>setOverlayTheme('auto')); }
-if(btnThemeDark){ btnThemeDark.addEventListener('click',()=>setOverlayTheme('dark')); }
-if(btnThemeDesj){ btnThemeDesj.addEventListener('click',()=>setOverlayTheme('desjardins')); }
-applyThemeButtons(th);
 // file input change handled by handleFileSelection above
 opInput.addEventListener('input',()=>{opacity=(parseInt(opInput.value,10)||0)/100;apply()});
 scInput.addEventListener('input',()=>{scale=(parseInt(scInput.value,10)||100)/100;apply()});
-xInput.addEventListener('change',()=>{posX=parseFloat(xInput.value)||0;apply()});
-yInput.addEventListener('change',()=>{posY=parseFloat(yInput.value)||0;apply()});
+xInput.addEventListener('change',()=>{posX=parseFloat(xInput.value)||0;apply();});
+yInput.addEventListener('change',()=>{posY=parseFloat(yInput.value)||0;apply();});
 blendSel.addEventListener('change',()=>{setBlend(blendSel.value)});
 btnHide.addEventListener('click',()=>{float.classList.toggle('visdiff-hidden')});
-btnCenter.addEventListener('click',()=>{if(img.src){posX=(window.innerWidth/2)-(img.naturalWidth*scale/2)+window.scrollX;posY=(window.innerHeight/2)-(img.naturalHeight*scale/2)+window.scrollY;apply()}});
-btnFit.addEventListener('click',()=>{if(img.src){scale=window.innerWidth/img.naturalWidth;scInput.value=String(Math.round(scale*100));apply()}});
-autoChk.addEventListener('change',()=>{autoUI=autoChk.checked;save()});
-panel.addEventListener('mouseenter',()=>{if(autoTimer){clearTimeout(autoTimer);autoTimer=null}});
-panel.addEventListener('mouseleave',()=>{if(autoUI){if(autoTimer)clearTimeout(autoTimer);autoTimer=setTimeout(()=>{toggleUI(false)},800)}});
-reopen.addEventListener('click',()=>toggleUI(true));
+btnCenter.addEventListener('click',()=>{if(img.src){const baseX=(window.innerWidth/2)-(img.naturalWidth*scale/2);const baseY=(window.innerHeight/2)-(img.naturalHeight*scale/2);if(anchorMode==='document'){posX=baseX+window.scrollX;posY=baseY+window.scrollY;}else{posX=baseX;posY=baseY;}apply();}});
+function fitOverlayBasic(){
+  if(!img.src) return null;
+  console.log('🔍 ADAPTATION: ajustement de base + diagnostic');
+  const imgWidth=img.naturalWidth, imgHeight=img.naturalHeight;
+  const methods={
+    scroll:{width:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),height:Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)},
+    offset:{width:Math.max(document.documentElement.offsetWidth,document.body.offsetWidth),height:Math.max(document.documentElement.offsetHeight,document.body.offsetHeight)},
+    client:{width:Math.max(document.documentElement.clientWidth,document.body.clientWidth),height:Math.max(document.documentElement.clientHeight,document.body.clientHeight)},
+    rect:(()=>{const html=document.documentElement.getBoundingClientRect();const body=document.body.getBoundingClientRect();return {width:Math.max(html.width,body.width),height:Math.max(html.height,body.height)};})()
+  };
+  let best=null, smallest=Infinity;
+  Object.entries(methods).forEach(([k,d])=>{
+    const s=Math.min(d.width/imgWidth,d.height/imgHeight);
+    const rw=imgWidth*s,rh=imgHeight*s; const diff=Math.abs(rw-d.width)+Math.abs(rh-d.height); if(diff<smallest){smallest=diff;best={k,d,s,rw,rh,diffW:Math.abs(rw-d.width),diffH:Math.abs(rh-d.height)}}
+  });
+  scale=best.s; scInput.value=String(Math.round(scale*100));
+  // Position de base: coin haut (0,0) dans l'espace actif
+  if(anchorMode==='document'){ posX=0+window.scrollX; posY=0+window.scrollY; } else { posX=0; posY=0; }
+  apply();
+  console.log(`✅ Base: méthode ${best.k}, échelle ${Math.round(scale*100)}%`);
+  return best;
+}
+if(btnAdapt){
+  btnAdapt.addEventListener('click', (ev)=>{
+    if(!img.src) return;
+    const prevMoved=userMovedOverlay; userMovedOverlay=false; // forcer recentrage si nécessaire dans diagnostic
+    const fitInfo=fitOverlayBasic();
+    const diag=diagnoseOverlayFit(ev);
+    userMovedOverlay=prevMoved; // restaurer état utilisateur
+    console.log('🧪 Adaptation terminée', {fit:fitInfo, diagnostic:diag});
+  });
+}
 btnReset.addEventListener('click',reset);
 btnClose.addEventListener('click',closeUI);
 gridChk.addEventListener('change',()=>{gOn=gridChk.checked;apply()});
@@ -313,30 +474,76 @@ loupeZoom.addEventListener('input',()=>{lZ=(parseInt(loupeZoom.value,10)||300)/1
 // slider controls
 sldChk.addEventListener('change',()=>{sOn=sldChk.checked;apply()});
 sldPos.addEventListener('input',()=>{sPct=Math.max(0,Math.min(100,parseInt(sldPos.value,10)||0));apply()});
+// Helper to update stored viewport-relative offsets when position changes while locked
+function updateLockOffsets(){} // deprecated (noop)
 // export button
 btnExport.addEventListener('click',exportOverlay);
 let drag=false,ox=0,oy=0;
 // Pinch variables
-let pinching=false,initialDist=0,initialScale=1;float.addEventListener('mousedown',e=>{drag=true;ox=e.clientX+window.scrollX-posX;oy=e.clientY+window.scrollY-posY;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
-d.addEventListener('mousemove',e=>{if(drag){posX=e.clientX+window.scrollX-ox;posY=e.clientY+window.scrollY-oy;apply()}if(lOn&&img.src){const x=e.clientX,y=e.clientY;const sz=lSize;loupe.style.left=Math.max(8,Math.min(x+16,window.innerWidth-sz-8))+'px';loupe.style.top=Math.max(8,Math.min(y+16,window.innerHeight-sz-8))+'px';lImg.src=img.src;const dispX=posX-window.scrollX;const dispY=posY-window.scrollY;const ix=(x-dispX)/scale;const iy=(y-dispY)/scale;lImg.style.transform=`translate(${(-ix*lZ+sz/2)}px,${(-iy*lZ+sz/2)}px) scale(${lZ})`}}
+let pinching=false,initialDist=0,initialScale=1;float.addEventListener('mousedown',e=>{drag=true;const curLeft = anchorMode==='document'? (posX - window.scrollX) : posX; const curTop = anchorMode==='document'? (posY - window.scrollY) : posY; ox=e.clientX-curLeft;oy=e.clientY-curTop;e.preventDefault()},{passive:false});
+// mouse move: drag + loupe update
+d.addEventListener('mousemove',e=>{if(drag){const newLeft=e.clientX-ox;const newTop=e.clientY-oy; if(anchorMode==='document'){posX=newLeft+window.scrollX;posY=newTop+window.scrollY;} else {posX=newLeft;posY=newTop;} apply()} if(lOn&&img.src){const x=e.clientX,y=e.clientY;const sz=lSize;loupe.style.left=Math.max(8,Math.min(x+16,window.innerWidth-sz-8))+'px';loupe.style.top=Math.max(8,Math.min(y+16,window.innerHeight-sz-8))+'px';lImg.src=img.src;const dispX=anchorMode==='document'? (posX-window.scrollX):posX;const dispY=anchorMode==='document'? (posY-window.scrollY):posY;const ix=(x-dispX)/scale;const iy=(y-dispY)/scale;lImg.style.transform=`translate(${(-ix*lZ+sz/2)}px,${(-iy*lZ+sz/2)}px) scale(${lZ})`}}
 );
 d.addEventListener('mouseup',()=>{drag=false});
 // Touch support for dragging overlay and moving loupe
-float.addEventListener('touchstart',e=>{const touches=e.touches;if(touches.length===1){const t=touches[0];drag=true;ox=t.clientX+window.scrollX-posX;oy=t.clientY+window.scrollY-posY;if(autoUI&&showUI)toggleUI(false);e.preventDefault()}else if(touches.length===2){pinching=true;const t1=touches[0],t2=touches[1];initialDist=Math.hypot(t1.clientX-t2.clientX,t1.clientY-t2.clientY);initialScale=scale;e.preventDefault()}},{passive:false});
-d.addEventListener('touchmove',e=>{const touches=e.touches;if(touches.length===1){const t=touches[0];let handled=false;if(drag){posX=t.clientX+window.scrollX-ox;posY=t.clientY+window.scrollY-oy;apply();handled=true}if(sliding){const x=t.clientX;sPct=Math.max(0,Math.min(100,(x/window.innerWidth)*100));apply();handled=true}if(lOn&&img.src){const x=t.clientX,y=t.clientY;const sz=lSize;loupe.style.left=Math.max(8,Math.min(x+16,window.innerWidth-sz-8))+'px';loupe.style.top=Math.max(8,Math.min(y+16,window.innerHeight-sz-8))+'px';lImg.src=img.src;const dispX=posX-window.scrollX;const dispY=posY-window.scrollY;const ix=(x-dispX)/scale;const iy=(y-dispY)/scale;lImg.style.transform=`translate(${(-ix*lZ+sz/2)}px,${(-iy*lZ+sz/2)}px) scale(${lZ})`}if(handled)e.preventDefault()}else if(touches.length===2&&pinching){const t1=touches[0],t2=touches[1];const dist=Math.hypot(t1.clientX-t2.clientX,t1.clientY-t2.clientY);scale=initialScale*(dist/initialDist);scale=Math.max(0.1,Math.min(5,scale));scInput.value=String(Math.round(scale*100));apply();e.preventDefault()}},{passive:false});
+float.addEventListener('touchstart',e=>{const touches=e.touches;if(touches.length===1){const t=touches[0];drag=true;const curLeft=anchorMode==='document'?(posX-window.scrollX):posX;const curTop=anchorMode==='document'?(posY-window.scrollY):posY;ox=t.clientX-curLeft;oy=t.clientY-curTop;e.preventDefault()}else if(touches.length===2){pinching=true;const t1=touches[0],t2=touches[1];initialDist=Math.hypot(t1.clientX-t2.clientX,t1.clientY-t2.clientY);initialScale=scale;e.preventDefault()}},{passive:false});
+d.addEventListener('touchmove',e=>{const touches=e.touches;if(touches.length===1){const t=touches[0];let handled=false;if(drag){const newLeft=t.clientX-ox;const newTop=t.clientY-oy;if(anchorMode==='document'){posX=newLeft+window.scrollX;posY=newTop+window.scrollY;} else {posX=newLeft;posY=newTop;} apply();handled=true}if(sliding){const x=t.clientX;sPct=Math.max(0,Math.min(100,(x/window.innerWidth)*100));apply();handled=true}if(lOn&&img.src){const x=t.clientX,y=t.clientY;const sz=lSize;loupe.style.left=Math.max(8,Math.min(x+16,window.innerWidth-sz-8))+'px';loupe.style.top=Math.max(8,Math.min(y+16,window.innerHeight-sz-8))+'px';lImg.src=img.src;const dispX=anchorMode==='document'?(posX-window.scrollX):posX;const dispY=anchorMode==='document'?(posY-window.scrollY):posY;const ix=(x-dispX)/scale;const iy=(y-dispY)/scale;lImg.style.transform=`translate(${(-ix*lZ+sz/2)}px,${(-iy*lZ+sz/2)}px) scale(${lZ})`}if(handled)e.preventDefault()}else if(touches.length===2&&pinching){const t1=touches[0],t2=touches[1];const dist=Math.hypot(t1.clientX-t2.clientX,t1.clientY-t2.clientY);scale=initialScale*(dist/initialDist);scale=Math.max(0.1,Math.min(5,scale));scInput.value=String(Math.round(scale*100));apply();e.preventDefault()}},{passive:false});
 d.addEventListener('touchend',()=>{drag=false;sliding=false;pinching=false},{passive:true});
 d.addEventListener('touchcancel',()=>{drag=false;sliding=false;pinching=false},{passive:true});
 // slider handle drag
-let sliding=false;handle.addEventListener('mousedown',e=>{sliding=true;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
-handle.addEventListener('touchstart',e=>{sliding=true;if(autoUI&&showUI)toggleUI(false);e.preventDefault()},{passive:false});
+let sliding=false;handle.addEventListener('mousedown',e=>{sliding=true;e.preventDefault()},{passive:false});
+handle.addEventListener('touchstart',e=>{sliding=true;e.preventDefault()},{passive:false});
 d.addEventListener('mousemove',e=>{if(sliding){const x=e.clientX;sPct=Math.max(0,Math.min(100,(x/window.innerWidth)*100));apply()}});
 d.addEventListener('mouseup',()=>{sliding=false});
 d.addEventListener('mouseup',()=>{drag=false});
 d.addEventListener('click', (e)=>{ const el = e.target.closest('.visdiff-btn'); if(el) try{ el.blur(); }catch(_){} });
 d.addEventListener('touchend', (e)=>{ const el = e.target.closest('.visdiff-btn'); if(el) try{ el.blur(); }catch(_){} }, {passive:true});
-d.addEventListener('keydown',e=>{if(!open)return;const step=e.shiftKey?10:1;if(e.key==='Escape'){closeUI()}else if(e.key==='ArrowLeft'){posX-=step;apply()}else if(e.key==='ArrowRight'){posX+=step;apply()}else if(e.key==='ArrowUp'){posY-=step;apply()}else if(e.key==='ArrowDown'){posY+=step;apply()}else if(e.key==='+'||e.key==='='){scale*=e.shiftKey?1.05:1.01;scInput.value=String(Math.round(scale*100));apply()}else if(e.key==='-'||e.key==='_'){scale/=e.shiftKey?1.05:1.01;scInput.value=String(Math.round(scale*100));apply()}else if(e.key==='d'||e.key==='D'){setBlend(blend==='difference'?'normal':'difference')}else if(e.key==='h'||e.key==='H'){toggleUI()}else if(e.key==='g'||e.key==='G'){gOn=!gOn;gridChk.checked=gOn;apply()}else if(e.key==='l'||e.key==='L'){lOn=!lOn;loupeChk.checked=lOn;apply()}else if(e.key==='s'||e.key==='S'){sOn=!sOn;sldChk.checked=sOn;apply()}else if(e.key==='x'||e.key==='X'){exportOverlay()}else if(e.key==='p'||e.key==='P'){snapshotPrompt()}else if(e.key==='u'||e.key==='U'){autoUI=!autoUI;autoChk.checked=autoUI;save()}});
-window.addEventListener('resize',apply); window.addEventListener('scroll',apply,{passive:true});
-async function exportOverlay(){try{if(!img.src){alert('Chargez une image d\'abord');return;}const w=window.innerWidth,h=window.innerHeight;const c=d.createElement('canvas');c.width=w;c.height=h;const cx=c.getContext('2d');cx.clearRect(0,0,w,h);cx.globalAlpha=opacity;if(sOn){cx.save();const sPx=Math.round((sPct/100)*w);cx.beginPath();cx.rect(0,0,sPx,h);cx.clip()}const dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;const dx=posX-window.scrollX;const dy=posY-window.scrollY;cx.drawImage(img,dx,dy,dw,dh);if(sOn){cx.restore()}const a=d.createElement('a');a.href=c.toDataURL('image/png');a.download='overlay-viewport.png';a.click()}catch(e){alert('Export impossible: '+e)}}
+d.addEventListener('keydown',e=>{if(!open)return;const step=e.shiftKey?10:1;const largeStep=e.shiftKey?100:40; // for viewport arrow scroll simulation
+  if(e.key==='Escape'){closeUI()}
+  else if(e.key==='ArrowLeft'){posX-=step;apply()}
+  else if(e.key==='ArrowRight'){posX+=step;apply()}
+  else if(e.key==='ArrowUp'){
+    if(anchorMode==='document'){posY-=step;apply();}
+    else { window.scrollBy(0,-step); }
+  }
+  else if(e.key==='ArrowDown'){
+    if(anchorMode==='document'){posY+=step;apply();}
+    else { window.scrollBy(0,step); }
+  }
+  else if(e.key==='PageDown'){
+    if(anchorMode==='document'){posY+=largeStep;apply();}
+    else { window.scrollBy(0,largeStep); }
+  }
+  else if(e.key==='PageUp'){
+    if(anchorMode==='document'){posY-=largeStep;apply();}
+    else { window.scrollBy(0,-largeStep); }
+  }
+  else if(e.key==='v'||e.key==='V'){
+    // Convert coordinates so visual position is preserved
+    if(anchorMode==='document'){
+      // Convert to viewport coords
+      posX = posX - window.scrollX; posY = posY - window.scrollY; anchorMode='viewport';
+    } else {
+      // Convert to document coords
+      posX = posX + window.scrollX; posY = posY + window.scrollY; anchorMode='document';
+    }
+    apply(); console.log('Anchor mode:',anchorMode);
+  }
+  else if(e.key==='+'||e.key==='='){scale*=e.shiftKey?1.05:1.01;scInput.value=String(Math.round(scale*100));apply()}
+  else if(e.key==='-'||e.key==='_'){scale/=e.shiftKey?1.05:1.01;scInput.value=String(Math.round(scale*100));apply()}
+  else if(e.key==='d'||e.key==='D'){setBlend(blend==='difference'?'normal':'difference')}
+  else if(e.key==='h'||e.key==='H'){toggleUI()}
+  else if(e.key==='g'||e.key==='G'){gOn=!gOn;gridChk.checked=gOn;apply()}
+  else if(e.key==='l'||e.key==='L'){lOn=!lOn;loupeChk.checked=lOn;apply()}
+  else if(e.key==='s'||e.key==='S'){sOn=!sOn;sldChk.checked=sOn;apply()}
+  else if(e.key==='x'||e.key==='X'){exportOverlay()}
+  else if(e.key==='p'||e.key==='P'){snapshotPrompt()}
+  else if(e.key==='o'||e.key==='O'){toggleUI(true)}
+});
+// Recalage pendant le scroll pour éviter le décalage visuel
+// Keep overlay visually synced when document anchored
+let _scrollPending=false;window.addEventListener('scroll',()=>{if(!open)return;if(anchorMode!=='document')return;if(_scrollPending)return;_scrollPending=true;requestAnimationFrame(()=>{_scrollPending=false;apply();});},{passive:true});
+async function exportOverlay(){try{if(!img.src){alert('Chargez une image d\'abord');return;}const w=window.innerWidth,h=window.innerHeight;const c=d.createElement('canvas');c.width=w;c.height=h;const cx=c.getContext('2d');cx.clearRect(0,0,w,h);cx.globalAlpha=opacity;if(sOn){cx.save();const sPx=Math.round((sPct/100)*w);cx.beginPath();cx.rect(0,0,sPx,h);cx.clip()}const dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;const dx=anchorMode==='document'? (posX-window.scrollX):posX;const dy=anchorMode==='document'? (posY-window.scrollY):posY;cx.drawImage(img,dx,dy,dw,dh);if(sOn){cx.restore()}const a=d.createElement('a');a.href=c.toDataURL('image/png');a.download='overlay-viewport.png';a.click()}catch(e){alert('Export impossible: '+e)}}
 async function snapshotPrompt(crop){let hid=false;try{if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){alert('Capture non supportée par ce navigateur');return}panel.classList.add('visdiff-hidden');handle.classList.add('visdiff-hidden');hid=true;const stream=await navigator.mediaDevices.getDisplayMedia({video:true});const track=stream.getVideoTracks()[0];const c=d.createElement('canvas');const cx=c.getContext('2d');let drew=false;let frameW=0,frameH=0;let drawSource=null;if('ImageCapture' in window){try{const ic=new ImageCapture(track);const bmp=await ic.grabFrame();frameW=bmp.width;frameH=bmp.height;c.width=frameW;c.height=frameH;cx.drawImage(bmp,0,0);drew=true;drawSource={type:'bmp',src:bmp};}catch(_){}}
 if(!drew){const v=d.createElement('video');v.srcObject=stream;await v.play();await new Promise(r=>setTimeout(r,140));frameW=v.videoWidth;frameH=v.videoHeight;c.width=frameW;c.height=frameH;cx.drawImage(v,0,0,frameW,frameH);v.pause();drawSource={type:'video',src:v};}
 if(crop && crop.w>3 && crop.h>3){const sx=frameW/window.innerWidth;const sy=frameH/window.innerHeight;const rx=Math.max(0,Math.round(crop.x*sx));const ry=Math.max(0,Math.round(crop.y*sy));const rw=Math.min(frameW-rx,Math.round(crop.w*sx));const rh=Math.min(frameH-ry,Math.round(crop.h*sy));const c2=d.createElement('canvas');c2.width=rw;c2.height=rh;const c2x=c2.getContext('2d');c2x.drawImage(drawSource.type==='video'?drawSource.src: c, rx, ry, rw, rh, 0, 0, rw, rh);const a=d.createElement('a');a.href=c2.toDataURL('image/png');a.download='snapshot-zone.png';a.click();}
@@ -388,7 +595,7 @@ async function snapshotFullPage(){
   }catch(e){ alert('Capture annulée ou échouée: '+e) }
   finally{ if(hid){ panel.classList.toggle('visdiff-hidden',!showUI) } handle.classList.toggle('visdiff-hidden',!sOn) }
 }
-load();autoChk.checked=autoUI; apply();openUI();
+load(); apply(); updateLockOffsets(); openUI();
 window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
   </script>
 
@@ -411,32 +618,8 @@ window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
   // Guard left intentionally: if reintroduced, wrap in existence check.
     })();
 
-    // Theme buttons with persistence (moon = dark, sun = Desjardins)
-    (function(){
-      const key = 'VD::theme';
-      const btnMoon = document.getElementById('themeMoon');
-      const btnSun = document.getElementById('themeSun');
-      const root = document.documentElement;
-      const mql = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-      function applyTheme(t){
-        let applied = t;
-        if(t==='auto'){
-          const isDark = mql && mql.matches;
-          applied = isDark ? 'dark' : 'light';
-        }
-        if(applied==='light'){ root.setAttribute('data-theme','light'); }
-        else if(applied==='desjardins'){ root.setAttribute('data-theme','desjardins'); }
-        else { root.removeAttribute('data-theme'); }
-        if(btnMoon) btnMoon.setAttribute('aria-pressed', String(t==='dark'));
-        if(btnSun) btnSun.setAttribute('aria-pressed', String(t==='desjardins'));
-      }
-      let saved = null; try{ saved = localStorage.getItem(key); }catch(_){ }
-      const initial = saved || 'desjardins';
-      applyTheme(initial);
-      if(mql){ mql.addEventListener('change', ()=>{ const t = localStorage.getItem(key) || initial; if(t==='auto'){ applyTheme('auto'); } }); }
-      if(btnMoon){ btnMoon.addEventListener('click', ()=>{ try{ localStorage.setItem(key,'dark'); }catch(_){} applyTheme('dark'); if(window.__VIS_DIFF__ && typeof window.__VIS_DIFF__.applyTheme === 'function') window.__VIS_DIFF__.applyTheme(); }); }
-      if(btnSun){ btnSun.addEventListener('click', ()=>{ try{ localStorage.setItem(key,'desjardins'); }catch(_){} applyTheme('desjardins'); if(window.__VIS_DIFF__ && typeof window.__VIS_DIFF__.applyTheme === 'function') window.__VIS_DIFF__.applyTheme(); }); }
-    })();
+    // Set default theme to Desjardins
+    document.documentElement.setAttribute('data-theme', 'desjardins');
 
     // Tabs logic
     const tabs = document.querySelectorAll('.tab');
@@ -473,4 +656,3 @@ window.__VIS_DIFF__={open:openUI,close:closeUI,toggle:toggleUI}})();
   Note: injector.min.js is a tiny, self-contained version of overlay controls to load via bookmarklet.
   For local file:// usage, some browsers block javascript: URLs dragging. If so, host via a local server or GitHub Pages.
 -->
-</html>
