@@ -3,7 +3,7 @@
 Outil 100% navigateur pour :
 1. Superposer rapidement un PNG (Figma / design) sur n’importe quelle page via un bookmarklet.
 2. Comparer deux images (design ↔ capture) avec diff pixel ou perceptuel (SSIM).
-3. Diagnostiquer automatiquement l’alignement (bouton « Diagnostiquer », Alt+clic = mode verbeux) et détecter les nouveaux éléments de la page par heuristique.
+3. Ajuster automatiquement l'overlay (bouton « Adapter dimensions overlay », Alt+clic = diagnostic verbeux).
 
 Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
 
@@ -15,8 +15,7 @@ Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
 - Export du viewport avec overlay, capture ponctuelle ou zone sélectionnée, capture plein‑page (scroll & stitch best‑effort).
 - Mode difference avec auto‑max de l’opacité (retour à la valeur précédente en quittant difference).
 - Palette fixe Desjardins pour l’overlay (simplifiée, plus de bascule de thème).
-- Détection heuristique des nouveaux éléments du DOM (bouton « Nouveaux éléments ») : surbrillance orange (nouveau) / jaune (partiel).
-- Diagnostic d’ajustement (échelle / recentrage / compensation scrollbars) avec toast de résultat.
+- Diagnostic d’ajustement (échelle / recentrage / compensation scrollbars) avec toast de résultat (intégré au bouton d'adaptation).
 - Mode split optimisé (wrapper + transform) pour meilleures performances.
 - Recalage fluide pendant le scroll (évite le glissement de l’overlay).
 - Persistance par domaine (overlay) + persistance globale des préférences diff.
@@ -43,7 +42,7 @@ Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
 - Loupe : activer + Taille + Zoom.
 - Curseur (split) : activer + Position.
 - Export overlay : PNG du viewport (tient compte du split).
-- Ajuster au viewport, Diagnostiquer (Alt+clic = logs détaillés), Centrer, Masquer image, Nouveaux éléments (toggle heuristique), Réinitialiser, Fermer.
+- Adapter dimensions overlay (fit + diagnostic), Centrer, Masquer image, Réinitialiser, Fermer.
 
 ## ⌨️ Raccourcis (overlay)
 | Touche | Action |
@@ -66,13 +65,13 @@ Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
 - Seuil : sensibilité (affiché %).
 - Options : Luminance seule, Lisser (1 px), Tolérance bords (AA).
 - Masques exclus : dessiner rectangles à ignorer (multi‑zones). 
+La comparaison ignore toujours les zones hors chevauchement. Si les tailles diffèrent, un badge « Tailles des images différentes (A WxH / B WxH) » apparaît (avec dimensions brutes) et une mention dans le statut indique que seule la zone commune est évaluée.
 - Inverser / Effacer / Télécharger diff / Réinitialiser préférences.
 
 ##  Persistance
 - Overlay : paramètres stockés par hôte (`localStorage` clé par domaine).
 - Diff images : préférences globales (seuil, options, couleur, masques en relatif si applicable).
 - Thème : (supprimé, palette fixe). 
- - Diff images : préférences globales (seuil, options, couleur, masques en relatif si applicable).
 
 ## Limitations / Notes
 - Politiques CSP strictes peuvent empêcher un bookmarklet (rare). Solution : mode Image ↔ Image.

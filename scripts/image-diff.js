@@ -5,6 +5,7 @@
   const dropzones = $$('.dropzone');
   const canvas = $('#diffCanvas');
   const diffStatus = document.getElementById('diffStatus');
+  const sizeIgnoredBadge = document.getElementById('sizeIgnoredBadge');
   const diffSpinner = document.getElementById('diffSpinner');
   const maskCanvas = document.getElementById('maskCanvas');
   const ctx = canvas.getContext('2d');
@@ -112,6 +113,8 @@
   function runDiff(){
   if(running) return; running = true; // ne plus désactiver le bouton
     if(!state.A || !state.B){ showWarn('⚠️ Veuillez charger les deux images (A et B).'); running=false; runBtn.removeAttribute('disabled'); return; }
+  const aW = state.A.naturalWidth, aH = state.A.naturalHeight;
+  const bW = state.B.naturalWidth, bH = state.B.naturalHeight;
     // Show spinner + interim status
     if(diffSpinner){ diffSpinner.classList.remove('hidden'); }
     if(diffStatus){ diffStatus.textContent='Calcul en cours…'; diffStatus.style.display='block'; diffStatus.style.color='#a7acc6'; }
@@ -120,22 +123,25 @@
   }
 
   function executeDiff(){
-    const w = Math.max(state.A.naturalWidth, state.B.naturalWidth);
-    const h = Math.max(state.A.naturalHeight, state.B.naturalHeight);
-    setCanvasSize(w,h);
+  // Always compare on overlap only (ignoring size differences outside shared area)
+  const aW = state.A.naturalWidth, aH = state.A.naturalHeight;
+  const bW = state.B.naturalWidth, bH = state.B.naturalHeight;
+  const targetW = Math.min(aW, bW);
+  const targetH = Math.min(aH, bH);
+    setCanvasSize(targetW, targetH);
 
     // Draw both on hidden buffers for pixel access
-    const bufA = document.createElement('canvas'); bufA.width=w; bufA.height=h;
-    const bufB = document.createElement('canvas'); bufB.width=w; bufB.height=h;
+    const bufA = document.createElement('canvas'); bufA.width=targetW; bufA.height=targetH;
+    const bufB = document.createElement('canvas'); bufB.width=targetW; bufB.height=targetH;
     const cA = bufA.getContext('2d'); const cB = bufB.getContext('2d');
-    cA.clearRect(0,0,w,h); cB.clearRect(0,0,w,h);
-    cA.drawImage(state.A, 0, 0);
-    cB.drawImage(state.B, 0, 0);
+    cA.clearRect(0,0,targetW,targetH); cB.clearRect(0,0,targetW,targetH);
+  cA.drawImage(state.A, 0, 0);
+  cB.drawImage(state.B, 0, 0);
 
-    let dA = cA.getImageData(0,0,w,h); let dB = cB.getImageData(0,0,w,h);
+  let dA = cA.getImageData(0,0,targetW,targetH); let dB = cB.getImageData(0,0,targetW,targetH);
     // Optional 1px box blur to reduce AA noise
     if(blur1 && blur1.checked){ dA = boxBlur1(dA,w,h); dB = boxBlur1(dB,w,h); }
-    const out = ctx.createImageData(w,h);
+  const out = ctx.createImageData(targetW,targetH);
     const tPct = Math.max(0, Math.min(100, parseInt(thresholdInput.value, 10) || 0));
     const mode = (diffModeSel && diffModeSel.value) || 'pixel';
     const t = mode==='pixel' ? Math.round((tPct/100) * 255) : 1 - (tPct/100); // SSIM threshold
@@ -144,7 +150,8 @@
     let diffCount = 0;
     if(mode==='pixel'){
       for(let i=0; i<dA.data.length; i+=4){
-        const px = (i/4) % w; const py = Math.floor((i/4)/w);
+        const px = (i/4) % targetW; const py = Math.floor((i/4)/targetW);
+  // Overlap canvas already restricts area; no bounds diff needed
         if(masks.length && masks.some(r=>pointInRect(px,py,r))){
           out.data[i] = dB.data[i] * 0.6; out.data[i+1] = dB.data[i+1] * 0.6; out.data[i+2] = dB.data[i+2] * 0.6; out.data[i+3] = 255; continue;
         }
@@ -162,7 +169,7 @@
         }
         if(edgeTol && edgeTol.checked){
           const gx = grad(dA, i, 1) + grad(dB, i, 1);
-          const gy = grad(dA, i, w) + grad(dB, i, w);
+          const gy = grad(dA, i, targetW) + grad(dB, i, targetW);
           const mag = Math.min(255, Math.hypot(gx, gy));
           const tLocal = t * (1 + 0.3*(mag/255));
           if(maxDiff <= tLocal){
@@ -179,14 +186,37 @@
     } else {
       const win = 5; const half = Math.floor(win/2);
       const YA = new Float32Array(w*h), YB = new Float32Array(w*h);
-      for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const i=(y*w+x)*4; YA[y*w+x]=0.2126*dA.data[i]+0.7152*dA.data[i+1]+0.0722*dA.data[i+2]; YB[y*w+x]=0.2126*dB.data[i]+0.7152*dB.data[i+1]+0.0722*dB.data[i+2]; }
+  for(let y=0;y<targetH;y++) for(let x=0;x<targetW;x++){ const i=(y*targetW+x)*4; YA[y*targetW+x]=0.2126*dA.data[i]+0.7152*dA.data[i+1]+0.0722*dA.data[i+2]; YB[y*targetW+x]=0.2126*dB.data[i]+0.7152*dB.data[i+1]+0.0722*dB.data[i+2]; }
       const C1 = 6.5025, C2 = 58.5225;
-      function ssimAt(x,y){ let muA=0, muB=0, n=0; for(let dy=-half; dy<=half; dy++) for(let dx=-half; dx<=half; dx++){ const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue; muA+=YA[ny*w+nx]; muB+=YB[ny*w+nx]; n++; } muA/=n; muB/=n; let varA=0,varB=0,cov=0; for(let dy=-half; dy<=half; dy++) for(let dx=-half; dx<=half; dx++){ const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue; const a=YA[ny*w+nx]-muA; const b=YB[ny*w+nx]-muB; varA+=a*a; varB+=b*b; cov+=a*b; } varA/=(n-1); varB/=(n-1); cov/=(n-1); const num=(2*muA*muB + C1) * (2*cov + C2); const den=(muA*muA + muB*muB + C1) * (varA + varB + C2); return den!==0 ? (num/den) : 1; }
-      for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const idx=(y*w+x)*4; if(masks.length && masks.some(r=>pointInRect(x,y,r))){ out.data[idx]=dB.data[idx]*0.6; out.data[idx+1]=dB.data[idx+1]*0.6; out.data[idx+2]=dB.data[idx+2]*0.6; out.data[idx+3]=255; continue; } const s = ssimAt(x,y); if(s < t){ diffCount++; out.data[idx]=color.r; out.data[idx+1]=color.g; out.data[idx+2]=color.b; out.data[idx+3]=255; } else { out.data[idx]=dB.data[idx]*0.6; out.data[idx+1]=dB.data[idx+1]*0.6; out.data[idx+2]=dB.data[idx+2]*0.6; out.data[idx+3]=255; } }
+      function ssimAt(x,y){ let muA=0, muB=0, n=0; for(let dy=-half; dy<=half; dy++) for(let dx=-half; dx<=half; dx++){ const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=targetW||ny>=targetH) continue; muA+=YA[ny*targetW+nx]; muB+=YB[ny*targetW+nx]; n++; } muA/=n; muB/=n; let varA=0,varB=0,cov=0; for(let dy=-half; dy<=half; dy++) for(let dx=-half; dx<=half; dx++){ const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=targetW||ny>=targetH) continue; const a=YA[ny*targetW+nx]-muA; const b=YB[ny*targetW+nx]-muB; varA+=a*a; varB+=b*b; cov+=a*b; } varA/=(n-1); varB/=(n-1); cov/=(n-1); const num=(2*muA*muB + C1) * (2*cov + C2); const den=(muA*muA + muB*muB + C1) * (varA + varB + C2); return den!==0 ? (num/den) : 1; }
+      for(let y=0;y<targetH;y++) for(let x=0;x<targetW;x++){ const idx=(y*targetW+x)*4; 
+        if(masks.length && masks.some(r=>pointInRect(x,y,r))){ out.data[idx]=dB.data[idx]*0.6; out.data[idx+1]=dB.data[idx+1]*0.6; out.data[idx+2]=dB.data[idx+2]*0.6; out.data[idx+3]=255; continue; }
+        const s = ssimAt(x,y); if(s < t){ diffCount++; out.data[idx]=color.r; out.data[idx+1]=color.g; out.data[idx+2]=color.b; out.data[idx+3]=255; } else { out.data[idx]=dB.data[idx]*0.6; out.data[idx+1]=dB.data[idx+1]*0.6; out.data[idx+2]=dB.data[idx+2]*0.6; out.data[idx+3]=255; } }
     }
     ctx.putImageData(out, 0, 0);
-    if(diffStatus){ diffStatus.style.display='block'; diffStatus.style.textAlign='center'; diffStatus.style.fontWeight='600'; if(diffCount===0){ diffStatus.textContent='Aucune différence détectée avec le seuil choisi.'; diffStatus.style.color='#0b6e32'; diffStatus.style.background=''; } else { const total=(out.width||w)*(out.height||h); const pct=Math.min(100, ((diffCount/total)*100).toFixed(3)); diffStatus.textContent=`${diffCount.toLocaleString()} pixels différents (~${pct}%)`; diffStatus.style.color='#b00020'; } }
-    hasDiff = true; hasDiffPixels = diffCount>0; updateButtons();
+    if(diffStatus){
+      diffStatus.style.display='block'; diffStatus.style.textAlign='center'; diffStatus.style.fontWeight='600';
+      const total=(out.width||targetW)*(out.height||targetH);
+      const sizeDiff = (aW!==bW || aH!==bH);
+      if(sizeIgnoredBadge){
+        if(sizeDiff){
+          sizeIgnoredBadge.style.display='inline-flex';
+          // Wording updated: "Tailles des images" showing both dimensions
+          sizeIgnoredBadge.textContent = `Tailles des images différentes (A ${aW}×${aH} / B ${bW}×${bH})`;
+        } else {
+          sizeIgnoredBadge.style.display='none';
+        }
+      }
+      if(diffCount===0){
+  diffStatus.textContent = sizeDiff ? 'Aucune différence (zone commune). Tailles des images différentes.' : 'Aucune différence.';
+        diffStatus.style.color = sizeDiff ? '#b26b00' : '#0b6e32';
+      } else {
+        const pct=Math.min(100, ((diffCount/total)*100).toFixed(3));
+  diffStatus.textContent = `${diffCount.toLocaleString()} pixels différents (~${pct}%)` + (sizeDiff ? ' | Tailles des images différentes' : '');
+        diffStatus.style.color = '#b00020';
+      }
+    }
+  hasDiff = true; hasDiffPixels = diffCount>0; updateButtons();
   running = false; if(diffSpinner){ diffSpinner.classList.add('hidden'); }
   }
 

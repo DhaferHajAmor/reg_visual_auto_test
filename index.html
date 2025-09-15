@@ -69,6 +69,9 @@
         <button id="resetPrefs" class="btn secondary" type="button">Réinitialiser préférences</button>
         <button id="downloadDiff" class="btn secondary" type="button">Télécharger le diff</button>
       </div>
+      <div class="controls-row" style="justify-content:center">
+  <span id="sizeIgnoredBadge" class="badge-size-ignored" style="display:none" aria-live="polite" aria-label="Les images ont des tailles différentes; seule la zone commune est comparée">Tailles différentes</span>
+      </div>
   <div id="diffStatus" class="tip" aria-live="polite" style="display:none;text-align:center;font-weight:600"></div>
       <div id="diffContainer" class="diff-wrap">
         <canvas id="diffCanvas" class="canvas" aria-label="Résultat du diff"></canvas>
