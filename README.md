@@ -71,6 +71,8 @@ Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
  La comparaison ignore toujours les zones hors chevauchement. Si les tailles diffèrent, un badge « Tailles des images différentes (A WxH / B WxH) » apparaît (avec dimensions brutes) et une mention dans le statut indique que seule la zone commune est évaluée.
  - Zones de focus (mode composant étendu) : bouton « Zones focus » pour entrer en mode ajout ; tracer une ou plusieurs zones d’intérêt (chaque relâche de souris ajoute une zone). Le diff est limité à l’union de ces zones, le reste est estompé. Meta/Ctrl+clic sur une zone pour la retirer. « Effacer focus » supprime toutes les zones et revient au mode global.
 - Inverser / Effacer / Télécharger diff / Réinitialiser préférences.
+ - Détecter décalage : analyse brute (±20 px) pour estimer un décalage (translation) global B→A et recadrer la zone de comparaison sur le chevauchement réel. Affiche le vecteur (dx,dy). « Réinit. décalage » annule. N'altère pas les images sources, uniquement la fenêtre comparée.
+ - Inverser / Effacer / Télécharger diff / Réinitialiser préférences.
 
 ##  Persistance
 - Overlay : paramètres stockés par hôte (`localStorage` clé par domaine).

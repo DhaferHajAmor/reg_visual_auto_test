@@ -67,6 +67,8 @@
         <button id="runDiff" class="btn secondary">Lancer le diff</button>
         <button id="swapImages" class="btn secondary">Inverser</button>
         <button id="clearImages" class="btn secondary">Effacer</button>
+    <button id="detectShift" class="btn secondary" type="button">Détecter décalage</button>
+    <button id="resetShift" class="btn secondary" type="button">Réinit. décalage</button>
       </div>
       <div class="controls-row" style="justify-content:center">
         <button id="resetPrefs" class="btn secondary" type="button">Réinitialiser préférences</button>
@@ -74,6 +76,7 @@
       </div>
       <div class="controls-row" style="justify-content:center">
   <span id="sizeIgnoredBadge" class="badge-size-ignored" style="display:none" aria-live="polite" aria-label="Les images ont des tailles différentes; seule la zone commune est comparée">Tailles différentes</span>
+  <span id="shiftInfo" class="badge-size-ignored" style="display:none;background:#00873e;color:#fff" aria-live="polite" aria-label="Décalage global appliqué"></span>
       </div>
   <div id="diffStatus" class="tip" aria-live="polite" style="display:none;text-align:center;font-weight:600"></div>
       <div id="diffContainer" class="diff-wrap">

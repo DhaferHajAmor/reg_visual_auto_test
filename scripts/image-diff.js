@@ -27,12 +27,17 @@
   const runBtn = $('#runDiff');
   const swapBtn = $('#swapImages');
   const clearBtn = $('#clearImages');
+  const detectShiftBtn = document.getElementById('detectShift');
+  const resetShiftBtn = document.getElementById('resetShift');
+  const shiftInfo = document.getElementById('shiftInfo');
 
   const state = { A:null, B:null };
   const objectURLs = { A:null, B:null }; // track blob URLs for cleanup
   let hasDiff = false; // diff executed at least once
   let hasDiffPixels = false; // any differing pixels
   let running = false; // diff execution state
+  // Global shift (detected horizontal/vertical translation) applied before diff
+  let globalShift = {dx:0, dy:0, active:false};
    // Focus zones state (multiple active rectangles limiting comparison / display)
    let focusRects = []; // array of {x,y,w,h}
    let focusDrawing = false; let focusStart = null; // current drawing start
@@ -62,6 +67,8 @@
   setBlocked(downloadBtn, false);
   // Reset preferences must always remain active regardless of state
   setBlocked(resetPrefsBtn, false);
+  setBlocked(detectShiftBtn, !bothLoaded);
+  setBlocked(resetShiftBtn, !globalShift.active);
   }
   updateButtons();
 
@@ -144,11 +151,29 @@
   }
 
   function executeDiff(){
-  // Always compare on overlap only (ignoring size differences outside shared area)
+  // Base dimensions
   const aW = state.A.naturalWidth, aH = state.A.naturalHeight;
   const bW = state.B.naturalWidth, bH = state.B.naturalHeight;
-  const targetW = Math.min(aW, bW);
-  const targetH = Math.min(aH, bH);
+  // Effective overlap after applying global shift (A is reference, B shifted by dx,dy)
+  let dx = globalShift.active ? globalShift.dx : 0;
+  let dy = globalShift.active ? globalShift.dy : 0;
+  // Compute intersection rectangle of A at (0,0) size (aW,aH) and B at (dx,dy) size (bW,bH)
+  const interX1 = Math.max(0, dx);
+  const interY1 = Math.max(0, dy);
+  const interX2 = Math.min(aW, dx + bW);
+  const interY2 = Math.min(aH, dy + bH);
+  let targetW = interX2 - interX1;
+  let targetH = interY2 - interY1;
+  if(targetW<=0 || targetH<=0){
+    setCanvasSize(10,10); ctx.clearRect(0,0,canvas.width,canvas.height);
+    if(diffStatus){ diffStatus.textContent='Décalage détecté sans zone de chevauchement.'; diffStatus.style.display='block'; diffStatus.style.color='#b00020'; }
+    running=false; if(diffSpinner){ diffSpinner.classList.add('hidden'); } return;
+  }
+  // If shift active, we will copy corresponding sub-rects into buffers so algorithm stays simpler
+  // Source rect in A: (interX1, interY1)
+  // Source rect in B: (interX1 - dx, interY1 - dy)
+  const srcAx = interX1, srcAy = interY1;
+  const srcBx = interX1 - dx, srcBy = interY1 - dy;
     setCanvasSize(targetW, targetH);
 
     // Draw both on hidden buffers for pixel access
@@ -156,8 +181,9 @@
     const bufB = document.createElement('canvas'); bufB.width=targetW; bufB.height=targetH;
     const cA = bufA.getContext('2d'); const cB = bufB.getContext('2d');
     cA.clearRect(0,0,targetW,targetH); cB.clearRect(0,0,targetW,targetH);
-  cA.drawImage(state.A, 0, 0);
-  cB.drawImage(state.B, 0, 0);
+  // Copy overlapping window only
+  cA.drawImage(state.A, srcAx, srcAy, targetW, targetH, 0, 0, targetW, targetH);
+  cB.drawImage(state.B, srcBx, srcBy, targetW, targetH, 0, 0, targetW, targetH);
 
   let dA = cA.getImageData(0,0,targetW,targetH); let dB = cB.getImageData(0,0,targetW,targetH);
     // Optional 1px box blur to reduce AA noise
@@ -274,12 +300,11 @@
       diffStatus.style.display='block'; diffStatus.style.textAlign='center'; diffStatus.style.fontWeight='600';
   let total=(out.width||targetW)*(out.height||targetH);
   if(focusRects.length){ total = focusPixelsTotal || 1; }
-      const sizeDiff = (aW!==bW || aH!==bH);
+      const sizeDiff = (aW!==bW || aH!==bH) || globalShift.active;
       if(sizeIgnoredBadge){
         if(sizeDiff){
           sizeIgnoredBadge.style.display='inline-flex';
-          // Wording updated: "Tailles des images" showing both dimensions
-          sizeIgnoredBadge.textContent = `Tailles des images différentes (A ${aW}×${aH} / B ${bW}×${bH})`;
+          sizeIgnoredBadge.textContent = `Base: A ${aW}×${aH} / B ${bW}×${bH}${globalShift.active?` | Décalage ${dx},${dy}`:''}`;
         } else {
           sizeIgnoredBadge.style.display='none';
         }
@@ -302,6 +327,72 @@
   hasDiff = true; hasDiffPixels = diffCount>0; updateButtons();
   running = false; if(diffSpinner){ diffSpinner.classList.add('hidden'); }
   }
+
+  // Global shift detection (brute-force limited search) over small window
+  function detectGlobalShift(){
+    if(!(state.A && state.B)){ showWarn('⚠️ Charger deux images pour détecter un décalage.'); return; }
+    const aW = state.A.naturalWidth, aH = state.A.naturalHeight;
+    const bW = state.B.naturalWidth, bH = state.B.naturalHeight;
+    // Limit search range (±20 px) to keep performance reasonable
+    const RANGE = 20;
+    // We evaluate a simple score: sum absolute luminance differences over sampled grid in overlap
+    // For speed, downsample by step (adaptive based on size)
+    const step = Math.max(1, Math.floor(Math.max(aW,aH)/400));
+    // Pre-draw full images into canvases for fast getImageData
+    const ca = document.createElement('canvas'); ca.width=aW; ca.height=aH; const cta=ca.getContext('2d'); cta.drawImage(state.A,0,0);
+    const cb = document.createElement('canvas'); cb.width=bW; cb.height=bH; const ctb=cb.getContext('2d'); ctb.drawImage(state.B,0,0);
+    const dA = cta.getImageData(0,0,aW,aH).data;
+    const dB = ctb.getImageData(0,0,bW,bH).data;
+    function lum(d,i){ return 0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2]; }
+    let best = {score: Infinity, dx:0, dy:0};
+    for(let dy=-RANGE; dy<=RANGE; dy++){
+      for(let dx=-RANGE; dx<=RANGE; dx++){
+        const x1 = Math.max(0, dx);
+        const y1 = Math.max(0, dy);
+        const x2 = Math.min(aW, dx + bW);
+        const y2 = Math.min(aH, dy + bH);
+        const w = x2 - x1, h = y2 - y1;
+        if(w<=0 || h<=0) continue;
+        let sum=0, count=0;
+        for(let y=y1; y<y2; y+=step){
+          for(let x=x1; x<x2; x+=step){
+            const ia = (y*aW + x)*4;
+            const xb = x - dx, yb = y - dy;
+            if(xb<0||yb<0||xb>=bW||yb>=bH) continue;
+            const ib = (yb*bW + xb)*4;
+            const la = lum(dA, ia); const lb = lum(dB, ib);
+            sum += Math.abs(la - lb);
+            count++;
+          }
+        }
+        if(count===0) continue;
+        const score = sum / count;
+        if(score < best.score){ best = {score, dx, dy}; }
+      }
+    }
+    // Only activate if improvement is meaningful (arbitrary threshold vs zero shift)
+    if(best.dx===0 && best.dy===0){
+      globalShift = {dx:0, dy:0, active:false};
+      if(shiftInfo){ shiftInfo.style.display='none'; }
+      showWarn('Aucun décalage global significatif détecté.');
+    } else {
+      globalShift = {dx:best.dx, dy:best.dy, active:true};
+      if(shiftInfo){ shiftInfo.textContent = `Décalage appliqué (${best.dx},${best.dy})`; shiftInfo.style.display='inline-flex'; }
+      if(diffStatus){ diffStatus.textContent = `Décalage détecté: dx=${best.dx}, dy=${best.dy}. Relancez le diff.`; diffStatus.style.display='block'; diffStatus.style.color='#00873e'; }
+    }
+    updateButtons();
+  }
+
+  detectShiftBtn && detectShiftBtn.addEventListener('click', ()=>{
+    detectGlobalShift();
+  });
+  resetShiftBtn && resetShiftBtn.addEventListener('click', ()=>{
+    if(!globalShift.active){ showWarn('⚠️ Aucun décalage actif.'); return; }
+    globalShift = {dx:0, dy:0, active:false};
+    if(shiftInfo){ shiftInfo.style.display='none'; }
+    if(diffStatus){ diffStatus.textContent='Décalage global réinitialisé.'; diffStatus.style.display='block'; diffStatus.style.color='#b26b00'; }
+    updateButtons();
+  });
 
   // Simple 1px box blur
   function boxBlur1(imgData,w,h){
