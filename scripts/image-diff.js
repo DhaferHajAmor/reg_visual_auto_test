@@ -56,7 +56,8 @@
   setBlocked(maskToggle, false);
   setBlocked(maskClear, false);
   setBlocked(focusZoneToggle, false);
-  setBlocked(focusZoneClear, !(focusRects && focusRects.length));
+  // Effacer focus reste toujours actif ; message si aucune zone
+  setBlocked(focusZoneClear, false);
   setBlocked(downloadBtn, false);
   // Reset preferences must always remain active regardless of state
   setBlocked(resetPrefsBtn, false);
@@ -445,8 +446,8 @@
     });
     if(focusZoneClear){
       focusZoneClear.addEventListener('click', ()=>{
-        if(!focusRects.length) return;
-        focusRects.length = 0; focusZoneClear.classList.add('blocked');
+        if(!focusRects.length){ showWarn('⚠️ Aucune zone de focus à effacer.'); return; }
+        focusRects.length = 0;
         if(hasDiff) executeDiff(); else if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); }
         updateButtons();
       });
