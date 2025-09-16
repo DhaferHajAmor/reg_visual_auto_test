@@ -24,6 +24,7 @@
   const blur1 = document.getElementById('blur1');
   const edgeTol = document.getElementById('edgeTol');
   const verticalTolInput = document.getElementById('verticalTol');
+  const ignoreText = document.getElementById('ignoreText');
   const runBtn = $('#runDiff');
   const swapBtn = $('#swapImages');
   const clearBtn = $('#clearImages');
@@ -281,6 +282,30 @@
               out.data[i] = dB.data[i] * 0.6; out.data[i+1] = dB.data[i+1] * 0.6; out.data[i+2] = dB.data[i+2] * 0.6; out.data[i+3] = 255; continue;
             }
           }
+          // Experimental ignoreText heuristic (après tolérance verticale)
+          if(ignoreText && ignoreText.checked){
+            let opaque=0; let lumVar=0; const lumVals=[];
+            for(let ny=-1; ny<=1; ny++){
+              const ry = py+ny; if(ry<0||ry>=targetH) continue;
+              for(let nx=-1; nx<=1; nx++){
+                const rx=px+nx; if(rx<0||rx>=targetW) continue;
+                const ii=(ry*targetW+rx)*4;
+                const alpha = dB.data[ii+3];
+                if(alpha>180) opaque++;
+                const l = 0.2126*dB.data[ii] + 0.7152*dB.data[ii+1] + 0.0722*dB.data[ii+2];
+                lumVals.push(l);
+              }
+            }
+            if(lumVals.length>1){
+              const mean = lumVals.reduce((a,b)=>a+b,0)/lumVals.length;
+              for(const lv of lumVals){ const d=lv-mean; lumVar+=d*d; }
+              lumVar/=lumVals.length;
+            }
+            if(opaque<=5 && lumVar>=1500){
+              out.data[i] = dB.data[i] * 0.35; out.data[i+1] = dB.data[i+1] * 0.35; out.data[i+2] = dB.data[i+2] * 0.35; out.data[i+3] = 255;
+              continue; // ne compte pas comme différence
+            }
+          }
           diffCount++;
           out.data[i] = color.r; out.data[i+1] = color.g; out.data[i+2] = color.b; out.data[i+3] = 255;
         } else {
@@ -435,8 +460,8 @@
   }
 
   // Preferences persistence and threshold label + mode label
-  function savePrefs(){ try{ localStorage.setItem(PREF_KEY, JSON.stringify({ threshold: Math.max(0, Math.min(100, parseInt(thresholdInput.value,10)||0)), color: diffColorInput.value||'#ff0055', luma: !!(lumaOnly&&lumaOnly.checked), blur: !!(blur1&&blur1.checked), edge: !!(edgeTol&&edgeTol.checked), vtol: Math.max(0, Math.min(10, parseInt(verticalTolInput && verticalTolInput.value,10)||0)) })); }catch(_){} }
-  function loadPrefs(){ try{ const v = JSON.parse(localStorage.getItem(PREF_KEY)||'null'); if(!v) return; if(typeof v.threshold==='number'){ thresholdInput.value=String(v.threshold); if(thresholdVal) thresholdVal.textContent=v.threshold+'%'; } if(typeof v.color==='string'){ diffColorInput.value=v.color; } if(lumaOnly) lumaOnly.checked=!!v.luma; if(blur1) blur1.checked=!!v.blur; if(edgeTol) edgeTol.checked=!!v.edge; if(verticalTolInput && typeof v.vtol==='number'){ verticalTolInput.value=String(v.vtol); } }catch(_){} }
+  function savePrefs(){ try{ localStorage.setItem(PREF_KEY, JSON.stringify({ threshold: Math.max(0, Math.min(100, parseInt(thresholdInput.value,10)||0)), color: diffColorInput.value||'#ff0055', luma: !!(lumaOnly&&lumaOnly.checked), blur: !!(blur1&&blur1.checked), edge: !!(edgeTol&&edgeTol.checked), vtol: Math.max(0, Math.min(10, parseInt(verticalTolInput && verticalTolInput.value,10)||0)), ignoreText: !!(ignoreText && ignoreText.checked) })); }catch(_){} }
+  function loadPrefs(){ try{ const v = JSON.parse(localStorage.getItem(PREF_KEY)||'null'); if(!v) return; if(typeof v.threshold==='number'){ thresholdInput.value=String(v.threshold); if(thresholdVal) thresholdVal.textContent=v.threshold+'%'; } if(typeof v.color==='string'){ diffColorInput.value=v.color; } if(lumaOnly) lumaOnly.checked=!!v.luma; if(blur1) blur1.checked=!!v.blur; if(edgeTol) edgeTol.checked=!!v.edge; if(verticalTolInput && typeof v.vtol==='number'){ verticalTolInput.value=String(v.vtol); } if(ignoreText && typeof v.ignoreText==='boolean'){ ignoreText.checked=v.ignoreText; } }catch(_){} }
   loadPrefs();
   if(thresholdVal){ const sync = ()=> { const t = Math.max(0, Math.min(100, parseInt(thresholdInput.value,10)||0)); thresholdVal.textContent = t + '%'; savePrefs(); }; thresholdInput.addEventListener('input', sync); sync(); }
   diffColorInput.addEventListener('change', savePrefs);
@@ -444,6 +469,7 @@
   blur1 && blur1.addEventListener('change', savePrefs);
   edgeTol && edgeTol.addEventListener('change', savePrefs);
   verticalTolInput && verticalTolInput.addEventListener('input', ()=>{ const v = Math.max(0, Math.min(10, parseInt(verticalTolInput.value,10)||0)); verticalTolInput.value=String(v); savePrefs(); });
+  ignoreText && ignoreText.addEventListener('change', savePrefs);
   if(diffModeSel){ const updateLabel=()=>{ thresholdLabelText && (thresholdLabelText.textContent = diffModeSel.value==='pixel' ? 'Seuil' : 'Seuil SSIM'); }; diffModeSel.addEventListener('change', updateLabel); updateLabel(); }
 
   // Reset preferences button
