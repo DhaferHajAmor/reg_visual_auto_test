@@ -26,16 +26,12 @@
   const runBtn = $('#runDiff');
   const swapBtn = $('#swapImages');
   const clearBtn = $('#clearImages');
-  const autoAlignBtn = document.getElementById('autoAlign');
-  const autoAlignResetBtn = document.getElementById('autoAlignReset');
 
   const state = { A:null, B:null };
   const objectURLs = { A:null, B:null }; // track blob URLs for cleanup
   let hasDiff = false; // diff executed at least once
   let hasDiffPixels = false; // any differing pixels
   let running = false; // diff execution state
-  // Alignment state (translation applied to B before diff in pixel mode)
-  let alignShift = { dx:0, dy:0, active:false };
    // Focus zones state (multiple active rectangles limiting comparison / display)
    let focusRects = []; // array of {x,y,w,h}
    let focusDrawing = false; let focusStart = null; // current drawing start
@@ -63,8 +59,6 @@
   // Effacer focus reste toujours actif ; message si aucune zone
   setBlocked(focusZoneClear, false);
   setBlocked(downloadBtn, false);
-  setBlocked(autoAlignBtn, false);
-  setBlocked(autoAlignResetBtn, !alignShift.active);
   // Reset preferences must always remain active regardless of state
   setBlocked(resetPrefsBtn, false);
   }
@@ -162,15 +156,7 @@
     const cA = bufA.getContext('2d'); const cB = bufB.getContext('2d');
     cA.clearRect(0,0,targetW,targetH); cB.clearRect(0,0,targetW,targetH);
   cA.drawImage(state.A, 0, 0);
-  // Apply alignment shift (only affects B image buffer) with clipping to canvas
-  if(alignShift.active){
-    cB.save();
-    cB.translate(alignShift.dx, alignShift.dy);
-    cB.drawImage(state.B, 0, 0);
-    cB.restore();
-  } else {
-    cB.drawImage(state.B, 0, 0);
-  }
+  cB.drawImage(state.B, 0, 0);
 
   let dA = cA.getImageData(0,0,targetW,targetH); let dB = cB.getImageData(0,0,targetW,targetH);
     // Optional 1px box blur to reduce AA noise
@@ -260,11 +246,10 @@
         diffStatus.style.color = sizeDiff ? '#b26b00' : '#0b6e32';
       } else {
         const pct=Math.min(100, ((diffCount/total)*100).toFixed(3));
-  let focusInfo = '';
+        let focusInfo = '';
         if(focusRects.length===1) focusInfo = ' | Zone focus active';
         else if(focusRects.length>1) focusInfo = ` | Zones focus actives: ${focusRects.length}`;
-  let alignInfo = alignShift.active ? ` | Alignement Δ ${alignShift.dx},${alignShift.dy}` : '';
-  diffStatus.textContent = `${diffCount.toLocaleString()} pixels différents (~${pct}%)` + (sizeDiff ? ' | Tailles des images différentes' : '') + focusInfo + alignInfo;
+        diffStatus.textContent = `${diffCount.toLocaleString()} pixels différents (~${pct}%)` + (sizeDiff ? ' | Tailles des images différentes' : '') + focusInfo;
         diffStatus.style.color = '#b00020';
       }
     }
@@ -363,8 +348,6 @@
   if(typeof maskToggle!=='undefined' && maskToggle){ maskToggle.textContent='Ignorer une zone'; }
   try{ localStorage.removeItem('VD::diffMasks'); }catch(_){}
     if(diffStatus){ diffStatus.textContent=''; diffStatus.style.display='none'; }
-  // Reset alignment
-  alignShift = { dx:0, dy:0, active:false };
   });
 
   // Download diff result (only active when hasDiff && hasDiffPixels via gating)
@@ -386,54 +369,6 @@
       }
     });
   }
-
-  // Auto alignment logic (brute-force local search for minimal diff in pixel mode)
-  function autoAlign(){
-    if(!state.A || !state.B){ showWarn('⚠️ Chargez deux images.'); return; }
-    if(diffModeSel && diffModeSel.value !== 'pixel'){ showWarn('⚠️ Alignement auto: uniquement en mode Pixel.'); return; }
-    const proceed = confirm('Alignement automatique\n\nRecherche du meilleur décalage (±40 px) qui minimise les différences. Peut prendre quelques centaines de ms. Continuer ?');
-    if(!proceed) return;
-    const aW = state.A.naturalWidth, aH = state.A.naturalHeight;
-    const bW = state.B.naturalWidth, bH = state.B.naturalHeight;
-    const targetW = Math.min(aW, bW); const targetH = Math.min(aH, bH);
-    const tmpA = document.createElement('canvas'); tmpA.width=targetW; tmpA.height=targetH;
-    const tmpB = document.createElement('canvas'); tmpB.width=targetW; tmpB.height=targetH;
-    const tA = tmpA.getContext('2d'); const tB = tmpB.getContext('2d');
-    tA.drawImage(state.A, 0,0);
-    const imgA = tA.getImageData(0,0,targetW,targetH).data;
-    const range = 40;
-    let best = {score: Infinity, dx:0, dy:0};
-    // Precompute luma optionally? Use simple abs diff on RGB max channel for speed
-    for(let dy=-range; dy<=range; dy++){
-      for(let dx=-range; dx<=range; dx++){
-        tB.clearRect(0,0,targetW,targetH);
-        tB.save(); tB.translate(dx,dy); tB.drawImage(state.B,0,0); tB.restore();
-        const imgB = tB.getImageData(0,0,targetW,targetH).data;
-        let diff=0; // accumulate simple max channel diff thresholded early
-        for(let i=0;i<imgA.length;i+=4){
-          const r = Math.abs(imgA[i]-imgB[i]);
-          const g = Math.abs(imgA[i+1]-imgB[i+1]);
-            const b = Math.abs(imgA[i+2]-imgB[i+2]);
-          const m = r>g ? (r>b?r:b) : (g>b?g:b);
-          diff += m;
-          if(diff >= best.score) break; // prune
-        }
-        if(diff < best.score){ best = {score: diff, dx, dy}; }
-      }
-    }
-    if(best.dx!==0 || best.dy!==0){
-      alignShift = { dx: best.dx, dy: best.dy, active: true };
-      showWarn(`Alignement appliqué: Δ ${best.dx},${best.dy}`);
-    } else {
-      alignShift = { dx:0, dy:0, active:false };
-      showWarn('Aucun décalage significatif détecté.');
-    }
-    if(hasDiff) executeDiff();
-    updateButtons();
-  }
-  function resetAlign(){ if(!alignShift.active){ showWarn('⚠️ Aucun alignement appliqué.'); return; } alignShift={dx:0,dy:0,active:false}; if(hasDiff) executeDiff(); updateButtons(); }
-  autoAlignBtn && autoAlignBtn.addEventListener('click', autoAlign);
-  autoAlignResetBtn && autoAlignResetBtn.addEventListener('click', resetAlign);
 
   // Mask UI wiring
   // (maskToggle, maskClear already defined above)

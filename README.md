@@ -67,7 +67,6 @@ Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
 - Masques exclus : dessiner rectangles à ignorer (multi‑zones). 
  La comparaison ignore toujours les zones hors chevauchement. Si les tailles diffèrent, un badge « Tailles des images différentes (A WxH / B WxH) » apparaît (avec dimensions brutes) et une mention dans le statut indique que seule la zone commune est évaluée.
  - Zones de focus (mode composant étendu) : bouton « Zones focus » pour entrer en mode ajout ; tracer une ou plusieurs zones d’intérêt (chaque relâche de souris ajoute une zone). Le diff est limité à l’union de ces zones, le reste est estompé. Meta/Ctrl+clic sur une zone pour la retirer. « Effacer focus » supprime toutes les zones et revient au mode global.
- - Alignement auto : tente un recalage translation (±40 px) de B pour minimiser les différences (mode Pixel uniquement). Affiche le décalage appliqué (Δ dx,dy). « Reset alignement » pour annuler. Ignoré en mode SSIM.
 - Inverser / Effacer / Télécharger diff / Réinitialiser préférences.
 
 ##  Persistance
