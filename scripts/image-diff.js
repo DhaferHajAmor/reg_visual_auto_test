@@ -14,6 +14,7 @@
    const focusZoneClear = document.getElementById('focusZoneClear');
   const PREF_KEY = 'VD::diffPrefs';
   const MASK_KEY = 'VD::diffMasks';
+  const FOCUS_KEY = 'VD::focusRects';
   let lastW = 0, lastH = 0;
   const thresholdInput = $('#threshold');
   const thresholdVal = document.getElementById('thresholdVal');
@@ -23,8 +24,7 @@
   const lumaOnly = document.getElementById('lumaOnly');
   const blur1 = document.getElementById('blur1');
   const edgeTol = document.getElementById('edgeTol');
-  const verticalTolInput = document.getElementById('verticalTol');
-  const ignoreText = document.getElementById('ignoreText');
+  // Tolérance verticale supprimée
   const runBtn = $('#runDiff');
   const swapBtn = $('#swapImages');
   const clearBtn = $('#clearImages');
@@ -39,6 +39,8 @@
   let running = false; // diff execution state
   // Global shift (detected horizontal/vertical translation) applied before diff
   let globalShift = {dx:0, dy:0, active:false};
+  // Note à afficher dans le statut après un évènement (ex: purge masques)
+  let purgeNote = '';
    // Focus zones state (multiple active rectangles limiting comparison / display)
    let focusRects = []; // array of {x,y,w,h}
    let focusDrawing = false; let focusStart = null; // current drawing start
@@ -72,11 +74,7 @@
   setBlocked(detectShiftBtn, false);
   setBlocked(resetShiftBtn, false);
     // Disable vertical tolerance UI when a global shift is active to avoid double compensation
-    if(verticalTolInput){
-      verticalTolInput.disabled = !!globalShift.active;
-      if(globalShift.active){ verticalTolInput.title='Désactivée car un décalage global est appliqué'; }
-      else { verticalTolInput.title='Tolère un léger décalage vertical (px)'; }
-    }
+  // Tolérance verticale supprimée
   }
   updateButtons();
 
@@ -95,7 +93,7 @@
   function setCanvasSize(w,h){
     canvas.width = w; canvas.height = h;
     if(maskCanvas){ maskCanvas.width = w; maskCanvas.height = h; }
-    if(w!==lastW || h!==lastH){ restoreMasksForSize(w,h); lastW=w; lastH=h; }
+  if(w!==lastW || h!==lastH){ restoreMasksForSize(w,h); lastW=w; lastH=h; }
     if(focusRects && focusRects.length){
       const before = focusRects.length;
       // Remove any focus rect falling outside new bounds
@@ -106,7 +104,7 @@
         if(r.y + r.h > h) r.h = h - r.y;
         if(r.w<=0 || r.h<=0) focusRects.splice(i,1);
       }
-      if(before !== focusRects.length) updateButtons();
+      if(before !== focusRects.length){ updateButtons(); saveFocusRects(); }
     }
   }
 
@@ -141,10 +139,106 @@
   const masks = []; // array of {x,y,w,h}
   let drawing = false; let start = null;
   let selectedIndex = -1; let moving = false; let moveOffset = {x:0,y:0};
-  function drawMasks(){ if(!mctx) return; mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); mctx.save(); mctx.fillStyle = 'rgba(255,255,255,0.25)'; mctx.strokeStyle = 'rgba(255,255,255,0.6)'; mctx.lineWidth = 1.5; masks.forEach((r,idx)=>{ mctx.fillRect(r.x,r.y,r.w,r.h); mctx.strokeRect(r.x,r.y,r.w,r.h); if(idx===selectedIndex){ mctx.strokeStyle='rgba(122,162,255,0.9)'; mctx.setLineDash([6,4]); mctx.strokeRect(r.x-2,r.y-2,r.w+4,r.h+4); mctx.setLineDash([]); mctx.strokeStyle='rgba(255,255,255,0.6)'; } }); mctx.restore(); }
+  let resizingMask = false; let resizeMaskIndex=-1; let resizeMaskHandle=null; let resizeMaskStart=null; let originalMaskRect=null;
+  // Pour contraindre le déplacement d'un masque quand des zones focus existent
+  let lastMaskInvalidWarn = 0;
+  // Animation pulse pour cadres (masques + focus)
+  let pulsePhase = 0; let animRAF = null;
+  function animStep(){
+    pulsePhase += 0.03; if(pulsePhase>Math.PI*2) pulsePhase-=Math.PI*2;
+    // Redessiner seulement si des zones existent
+    if(masks.length || focusRects.length){ drawMasks(true); }
+    else { animRAF=null; return; }
+    animRAF = requestAnimationFrame(animStep);
+  }
+  function ensureAnim(){ if(!animRAF && (masks.length || focusRects.length)) animRAF = requestAnimationFrame(animStep); }
+  function drawMasks(fromAnim=false){ if(!mctx) return; mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); mctx.save();
+    const glow = (Math.sin(pulsePhase)+1)/2; // 0..1
+    const baseAlphaFill = 0.18 + glow*0.07;
+    const baseAlphaStroke = 0.4 + glow*0.35;
+    mctx.lineWidth = 1.5;
+    // Masques (zones ignorées)
+    masks.forEach((r,idx)=>{
+      mctx.fillStyle = `rgba(255,255,255,${baseAlphaFill.toFixed(3)})`;
+      mctx.strokeStyle = `rgba(255,255,255,${baseAlphaStroke.toFixed(3)})`;
+      mctx.fillRect(r.x,r.y,r.w,r.h);
+      mctx.strokeRect(r.x+0.5,r.y+0.5,r.w-1,r.h-1);
+      if(idx===selectedIndex){
+        mctx.save();
+        mctx.strokeStyle = `rgba(122,162,255,${0.75 + glow*0.25})`;
+        mctx.setLineDash([6,4]);
+        mctx.lineWidth = 2;
+        mctx.strokeRect(r.x-2,r.y-2,r.w+4,r.h+4);
+        mctx.restore();
+      }
+      // Handles de redimensionnement pour masques (si pas en train de dessiner focus ou masque)
+      if(!drawing && !focusDrawing){
+        const handleSize=6; const hs=handleSize; const half=hs/2;
+        const points=[
+          {k:'nw', x:r.x, y:r.y}, {k:'ne', x:r.x+r.w, y:r.y},
+          {k:'sw', x:r.x, y:r.y+r.h}, {k:'se', x:r.x+r.w, y:r.y+r.h},
+          {k:'n', x:r.x+r.w/2, y:r.y}, {k:'s', x:r.x+r.w/2, y:r.y+r.h},
+          {k:'w', x:r.x, y:r.y+r.h/2}, {k:'e', x:r.x+r.w, y:r.y+r.h/2}
+        ];
+        mctx.save(); mctx.setLineDash([]);
+        points.forEach(p=>{ mctx.fillStyle='rgba(255,255,255,0.85)'; mctx.strokeStyle='rgba(0,0,0,0.4)'; mctx.lineWidth=1; mctx.beginPath(); mctx.rect(p.x-half,p.y-half,hs,hs); mctx.fill(); mctx.stroke(); });
+        mctx.restore();
+      }
+    });
+    // Focus rects (zone(s) de focus) en vert pulsant
+    if(focusRects.length){
+      const focusAlpha = 0.55 + glow*0.35;
+      focusRects.forEach(fr => {
+        mctx.save();
+        mctx.strokeStyle = `rgba(0,135,62,${focusAlpha.toFixed(3)})`;
+        mctx.lineWidth = 2 + glow*0.8;
+        mctx.setLineDash([6,4]);
+        mctx.strokeRect(fr.x+0.5, fr.y+0.5, fr.w-1, fr.h-1);
+        mctx.restore();
+          // Handles de redimensionnement (8 px carrés)
+          if(!focusDrawing){
+            const handleSize = 6;
+            const hs = handleSize; const half=hs/2;
+            const points = [
+              {k:'nw', x:fr.x, y:fr.y},
+              {k:'ne', x:fr.x+fr.w, y:fr.y},
+              {k:'sw', x:fr.x, y:fr.y+fr.h},
+              {k:'se', x:fr.x+fr.w, y:fr.y+fr.h},
+              {k:'n', x:fr.x+fr.w/2, y:fr.y},
+              {k:'s', x:fr.x+fr.w/2, y:fr.y+fr.h},
+              {k:'w', x:fr.x, y:fr.y+fr.h/2},
+              {k:'e', x:fr.x+fr.w, y:fr.y+fr.h/2}
+            ];
+            mctx.save();
+            mctx.setLineDash([]);
+            points.forEach(p=>{
+              mctx.fillStyle='rgba(0,135,62,0.85)';
+              mctx.strokeStyle='rgba(255,255,255,0.9)';
+              mctx.lineWidth=1;
+              mctx.beginPath();
+              mctx.rect(p.x - half, p.y - half, hs, hs);
+              mctx.fill(); mctx.stroke();
+            });
+            mctx.restore();
+          }
+      });
+    }
+    mctx.restore();
+    if(!fromAnim) ensureAnim();
+  }
   function pointInRect(x,y,r){ return x>=r.x && y>=r.y && x<r.x+r.w && y<r.y+r.h; }
-  function saveMasks(){ try{ localStorage.setItem(MASK_KEY, JSON.stringify({ w: canvas.width, h: canvas.height, rects: masks })); }catch(_){} }
-  function restoreMasksForSize(w,h){ try{ const saved = JSON.parse(localStorage.getItem(MASK_KEY)||'null'); if(!saved||!saved.rects){ drawMasks(); updateButtons(); return; } const sx = saved.w? (w/saved.w):1; const sy = saved.h? (h/saved.h):1; masks.length=0; saved.rects.forEach(r=>masks.push({ x: Math.round(r.x*sx), y: Math.round(r.y*sy), w: Math.round(r.w*sx), h: Math.round(r.h*sy) })); drawMasks(); updateButtons(); }catch(_){ drawMasks(); updateButtons(); } }
+  function rectInside(r, container){
+    return r.x >= container.x && r.y >= container.y && (r.x + r.w) <= (container.x + container.w) && (r.y + r.h) <= (container.y + container.y + container.h - container.y);
+  }
+  function maskInsideAnyFocus(r){
+    if(!focusRects.length) return true; // aucune contrainte si pas de focus
+    return focusRects.some(f=> r.x >= f.x && r.y >= f.y && (r.x + r.w) <= (f.x + f.w) && (r.y + r.h) <= (f.y + f.h));
+  }
+  // Persistance zones ignorées / focus désactivée : fonctions neutres
+  function saveMasks(){ /* no-op */ }
+  function restoreMasksForSize(w,h){ drawMasks(); updateButtons(); }
+  function saveFocusRects(){ /* no-op */ }
+  function restoreFocusForSize(w,h){ /* no-op */ }
 
   function runDiff(){
   if(running) return; running = true; // ne plus désactiver le bouton
@@ -215,7 +309,7 @@
         if(masks.length && masks.some(r=>pointInRect(px,py,r))){
           out.data[i] = dB.data[i] * 0.6; out.data[i+1] = dB.data[i+1] * 0.6; out.data[i+2] = dB.data[i+2] * 0.6; out.data[i+3] = 255; continue;
         }
-        let maxDiff;
+  let maxDiff;
         if(lumaOnly && lumaOnly.checked){
           const lA = 0.2126*dA.data[i] + 0.7152*dA.data[i+1] + 0.0722*dA.data[i+2];
           const lB = 0.2126*dB.data[i] + 0.7152*dB.data[i+1] + 0.0722*dB.data[i+2];
@@ -236,76 +330,8 @@
             out.data[i] = dB.data[i] * 0.6; out.data[i+1] = dB.data[i+1] * 0.6; out.data[i+2] = dB.data[i+2] * 0.6; out.data[i+3] = 255; continue;
           }
         }
+        // (Tolérance verticale supprimée)
         if(maxDiff > t){
-          // Vertical tolerance search (same column) if enabled
-          let vtol = 0;
-          if(verticalTolInput){ vtol = Math.max(0, Math.min(10, parseInt(verticalTolInput.value,10)||0)); }
-          if(vtol>0){
-            let adjusted=false;
-            for(let dy=1; dy<=vtol && !adjusted; dy++){
-              const aboveY = py - dy;
-              if(aboveY>=0){
-                const ai = (aboveY*targetW + px)*4;
-                let diffA;
-                if(lumaOnly && lumaOnly.checked){
-                  const lA2 = 0.2126*dA.data[ai] + 0.7152*dA.data[ai+1] + 0.0722*dA.data[ai+2];
-                  const lB2 = 0.2126*dB.data[i] + 0.7152*dB.data[i+1] + 0.0722*dB.data[i+2];
-                  diffA = Math.abs(lA2 - lB2);
-                } else {
-                  const rA2 = Math.abs(dA.data[ai] - dB.data[i]);
-                  const gA2 = Math.abs(dA.data[ai+1] - dB.data[i+1]);
-                  const bA2 = Math.abs(dA.data[ai+2] - dB.data[i+2]);
-                  const aA2 = Math.abs(dA.data[ai+3] - dB.data[i+3]);
-                  diffA = Math.max(rA2,gA2,bA2,aA2);
-                }
-                if(diffA <= t){ adjusted=true; }
-              }
-              const belowY = py + dy;
-              if(!adjusted && belowY<targetH){
-                const bi = (belowY*targetW + px)*4;
-                let diffB;
-                if(lumaOnly && lumaOnly.checked){
-                  const lA3 = 0.2126*dA.data[bi] + 0.7152*dA.data[bi+1] + 0.0722*dA.data[bi+2];
-                  const lB3 = 0.2126*dB.data[i] + 0.7152*dB.data[i+1] + 0.0722*dB.data[i+2];
-                  diffB = Math.abs(lA3 - lB3);
-                } else {
-                  const rB2 = Math.abs(dA.data[bi] - dB.data[i]);
-                  const gB2 = Math.abs(dA.data[bi+1] - dB.data[i+1]);
-                  const bB2 = Math.abs(dA.data[bi+2] - dB.data[i+2]);
-                  const aB2 = Math.abs(dA.data[bi+3] - dB.data[i+3]);
-                  diffB = Math.max(rB2,gB2,bB2,aB2);
-                }
-                if(diffB <= t){ adjusted=true; }
-              }
-            }
-            if(adjusted){
-              out.data[i] = dB.data[i] * 0.6; out.data[i+1] = dB.data[i+1] * 0.6; out.data[i+2] = dB.data[i+2] * 0.6; out.data[i+3] = 255; continue;
-            }
-          }
-          // Experimental ignoreText heuristic (après tolérance verticale)
-          if(ignoreText && ignoreText.checked){
-            let opaque=0; let lumVar=0; const lumVals=[];
-            for(let ny=-1; ny<=1; ny++){
-              const ry = py+ny; if(ry<0||ry>=targetH) continue;
-              for(let nx=-1; nx<=1; nx++){
-                const rx=px+nx; if(rx<0||rx>=targetW) continue;
-                const ii=(ry*targetW+rx)*4;
-                const alpha = dB.data[ii+3];
-                if(alpha>180) opaque++;
-                const l = 0.2126*dB.data[ii] + 0.7152*dB.data[ii+1] + 0.0722*dB.data[ii+2];
-                lumVals.push(l);
-              }
-            }
-            if(lumVals.length>1){
-              const mean = lumVals.reduce((a,b)=>a+b,0)/lumVals.length;
-              for(const lv of lumVals){ const d=lv-mean; lumVar+=d*d; }
-              lumVar/=lumVals.length;
-            }
-            if(opaque<=5 && lumVar>=1500){
-              out.data[i] = dB.data[i] * 0.35; out.data[i+1] = dB.data[i+1] * 0.35; out.data[i+2] = dB.data[i+2] * 0.35; out.data[i+3] = 255;
-              continue; // ne compte pas comme différence
-            }
-          }
           diffCount++;
           out.data[i] = color.r; out.data[i+1] = color.g; out.data[i+2] = color.b; out.data[i+3] = 255;
         } else {
@@ -343,18 +369,21 @@
       }
       if(diffCount===0){
         const base = sizeDiff ? 'Aucune différence (zone commune). Tailles des images différentes.' : 'Aucune différence.';
-        if(focusRects.length===1){ diffStatus.textContent = base + ' | Zone focus active'; }
-        else if(focusRects.length>1){ diffStatus.textContent = base + ` | Zones focus actives: ${focusRects.length}`; }
-        else { diffStatus.textContent = base; }
+  let maskInfo = masks.length ? (masks.length===1 ? ' | 1 zone ignorée' : ` | ${masks.length} zones ignorées`) : '';
+  if(focusRects.length===1){ diffStatus.textContent = base + ' | Zone focus active' + maskInfo; }
+  else if(focusRects.length>1){ diffStatus.textContent = base + ` | Zones focus actives: ${focusRects.length}` + maskInfo; }
+  else { diffStatus.textContent = base + maskInfo; }
         diffStatus.style.color = sizeDiff ? '#b26b00' : '#0b6e32';
       } else {
         const pct=Math.min(100, ((diffCount/total)*100).toFixed(3));
         let focusInfo = '';
         if(focusRects.length===1) focusInfo = ' | Zone focus active';
         else if(focusRects.length>1) focusInfo = ` | Zones focus actives: ${focusRects.length}`;
-        diffStatus.textContent = `${diffCount.toLocaleString()} pixels différents (~${pct}%)` + (sizeDiff ? ' | Tailles des images différentes' : '') + focusInfo;
+  let maskInfo2 = masks.length ? (masks.length===1 ? ' | 1 zone ignorée' : ` | ${masks.length} zones ignorées`) : '';
+  diffStatus.textContent = `${diffCount.toLocaleString()} pixels différents (~${pct}%)` + (sizeDiff ? ' | Tailles des images différentes' : '') + focusInfo + maskInfo2;
         diffStatus.style.color = '#b00020';
       }
+  if(purgeNote){ diffStatus.textContent += purgeNote; purgeNote=''; }
     }
   hasDiff = true; hasDiffPixels = diffCount>0; updateButtons();
   running = false; if(diffSpinner){ diffSpinner.classList.add('hidden'); }
@@ -460,16 +489,15 @@
   }
 
   // Preferences persistence and threshold label + mode label
-  function savePrefs(){ try{ localStorage.setItem(PREF_KEY, JSON.stringify({ threshold: Math.max(0, Math.min(100, parseInt(thresholdInput.value,10)||0)), color: diffColorInput.value||'#ff0055', luma: !!(lumaOnly&&lumaOnly.checked), blur: !!(blur1&&blur1.checked), edge: !!(edgeTol&&edgeTol.checked), vtol: Math.max(0, Math.min(10, parseInt(verticalTolInput && verticalTolInput.value,10)||0)), ignoreText: !!(ignoreText && ignoreText.checked) })); }catch(_){} }
-  function loadPrefs(){ try{ const v = JSON.parse(localStorage.getItem(PREF_KEY)||'null'); if(!v) return; if(typeof v.threshold==='number'){ thresholdInput.value=String(v.threshold); if(thresholdVal) thresholdVal.textContent=v.threshold+'%'; } if(typeof v.color==='string'){ diffColorInput.value=v.color; } if(lumaOnly) lumaOnly.checked=!!v.luma; if(blur1) blur1.checked=!!v.blur; if(edgeTol) edgeTol.checked=!!v.edge; if(verticalTolInput && typeof v.vtol==='number'){ verticalTolInput.value=String(v.vtol); } if(ignoreText && typeof v.ignoreText==='boolean'){ ignoreText.checked=v.ignoreText; } }catch(_){} }
+  function savePrefs(){ try{ localStorage.setItem(PREF_KEY, JSON.stringify({ threshold: Math.max(0, Math.min(100, parseInt(thresholdInput.value,10)||0)), color: diffColorInput.value||'#ff0055', luma: !!(lumaOnly&&lumaOnly.checked), blur: !!(blur1&&blur1.checked), edge: !!(edgeTol&&edgeTol.checked) })); }catch(_){} }
+  function loadPrefs(){ try{ const v = JSON.parse(localStorage.getItem(PREF_KEY)||'null'); if(!v) return; if(typeof v.threshold==='number'){ thresholdInput.value=String(v.threshold); if(thresholdVal) thresholdVal.textContent=v.threshold+'%'; } if(typeof v.color==='string'){ diffColorInput.value=v.color; } if(lumaOnly) lumaOnly.checked=!!v.luma; if(blur1) blur1.checked=!!v.blur; if(edgeTol) edgeTol.checked=!!v.edge; }catch(_){} }
   loadPrefs();
   if(thresholdVal){ const sync = ()=> { const t = Math.max(0, Math.min(100, parseInt(thresholdInput.value,10)||0)); thresholdVal.textContent = t + '%'; savePrefs(); }; thresholdInput.addEventListener('input', sync); sync(); }
   diffColorInput.addEventListener('change', savePrefs);
   lumaOnly && lumaOnly.addEventListener('change', savePrefs);
   blur1 && blur1.addEventListener('change', savePrefs);
   edgeTol && edgeTol.addEventListener('change', savePrefs);
-  verticalTolInput && verticalTolInput.addEventListener('input', ()=>{ const v = Math.max(0, Math.min(10, parseInt(verticalTolInput.value,10)||0)); verticalTolInput.value=String(v); savePrefs(); });
-  ignoreText && ignoreText.addEventListener('change', savePrefs);
+  // Tolérance verticale supprimée
   if(diffModeSel){ const updateLabel=()=>{ thresholdLabelText && (thresholdLabelText.textContent = diffModeSel.value==='pixel' ? 'Seuil' : 'Seuil SSIM'); }; diffModeSel.addEventListener('change', updateLabel); updateLabel(); }
 
   // Reset preferences button
@@ -565,14 +593,35 @@
         showWarn('⚠️ Rien à effacer : soit aucun diff, soit aucune différence.');
         return;
       }
-      masks.length = 0; drawMasks(); saveMasks(); 
+  masks.length = 0; drawMasks(); saveMasks(); 
   updateButtons();
     });
-    maskCanvas.addEventListener('mousedown', (e)=>{
+  maskCanvas.addEventListener('mousedown', (e)=>{
       if(focusDrawing) return; // ignore mask interactions while drawing focus zones
       const rect = maskCanvas.getBoundingClientRect();
       const px = Math.round((e.clientX-rect.left) * (canvas.width/rect.width));
       const py = Math.round((e.clientY-rect.top) * (canvas.height/rect.height));
+      // Détection poignée resize masque
+      if(!drawing){
+        const hit = (function(){
+          const handleSize=6; const half=handleSize/2;
+          for(let i=masks.length-1;i>=0;i--){
+            const r=masks[i];
+            const points=[
+              {k:'nw', x:r.x, y:r.y}, {k:'ne', x:r.x+r.w, y:r.y},
+              {k:'sw', x:r.x, y:r.y+r.h}, {k:'se', x:r.x+r.w, y:r.y+r.h},
+              {k:'n', x:r.x+r.w/2, y:r.y}, {k:'s', x:r.x+r.w/2, y:r.y+r.h},
+              {k:'w', x:r.x, y:r.y+r.h/2}, {k:'e', x:r.x+r.w, y:r.y+r.h/2}
+            ];
+            for(const p of points){ if(px>=p.x-half && px<=p.x+half && py>=p.y-half && py<=p.y+half){ return {index:i, handle:p.k}; } }
+          }
+          return null;
+        })();
+        if(hit){
+          resizingMask=true; resizeMaskIndex=hit.index; resizeMaskHandle=hit.handle; resizeMaskStart={x:px,y:py}; originalMaskRect={...masks[resizeMaskIndex]};
+          return;
+        }
+      }
       // Cmd/Ctrl+click on a rect to delete it
       const hitIndex = masks.findIndex(r=>pointInRect(px,py,r));
   if((e.metaKey||e.ctrlKey) && hitIndex!==-1){ masks.splice(hitIndex,1); selectedIndex=-1; drawMasks(); saveMasks(); return; }
@@ -591,12 +640,61 @@
       const rect = maskCanvas.getBoundingClientRect();
       const x = Math.round((e.clientX-rect.left) * (canvas.width/rect.width));
       const y = Math.round((e.clientY-rect.top) * (canvas.height/rect.height));
+      if(resizingMask && resizeMaskIndex!==-1){
+        const r = masks[resizeMaskIndex];
+        // reset base
+        r.x = originalMaskRect.x; r.y = originalMaskRect.y; r.w = originalMaskRect.w; r.h = originalMaskRect.h;
+        const dx = x - resizeMaskStart.x; const dy = y - resizeMaskStart.y;
+        function applyEdge(edge){
+          switch(edge){
+            case 'n': r.y = originalMaskRect.y + dy; r.h = originalMaskRect.h - dy; break;
+            case 's': r.h = originalMaskRect.h + dy; break;
+            case 'w': r.x = originalMaskRect.x + dx; r.w = originalMaskRect.w - dx; break;
+            case 'e': r.w = originalMaskRect.w + dx; break;
+          }
+        }
+        if(resizeMaskHandle.length===2){ applyEdge(resizeMaskHandle[0]); applyEdge(resizeMaskHandle[1]); } else applyEdge(resizeMaskHandle);
+        if(r.w<3){ if(resizeMaskHandle.includes('w')){ r.x = (originalMaskRect.x+originalMaskRect.w)-3; } r.w=3; }
+        if(r.h<3){ if(resizeMaskHandle.includes('n')){ r.y = (originalMaskRect.y+originalMaskRect.h)-3; } r.h=3; }
+        if(r.x<0){ r.w -= (0-r.x); r.x=0; }
+        if(r.y<0){ r.h -= (0-r.y); r.y=0; }
+        if(r.x+r.w>canvas.width){ r.w = canvas.width - r.x; }
+        if(r.y+r.h>canvas.height){ r.h = canvas.height - r.y; }
+        // Contrainte focus
+        if(focusRects.length && !maskInsideAnyFocus(r)){
+          // annuler (revenir état original) visuel rouge
+          r.x=originalMaskRect.x; r.y=originalMaskRect.y; r.w=originalMaskRect.w; r.h=originalMaskRect.h;
+          drawMasks();
+          mctx.save(); mctx.strokeStyle='rgba(255,64,64,0.9)'; mctx.setLineDash([4,3]); mctx.strokeRect(r.x+0.5,r.y+0.5,r.w-1,r.h-1); mctx.restore();
+          return;
+        }
+        drawMasks();
+        return;
+      }
       if(drawing){
         if(!start) return; const r = { x: Math.min(start.x,x), y: Math.min(start.y,y), w: Math.abs(x-start.x), h: Math.abs(y-start.y) };
+        // Prévisualisation uniquement si rectangle demeurera valide (ou si aucune zone focus)
         drawMasks();
-        mctx.save(); mctx.fillStyle='rgba(255,255,255,0.25)'; mctx.strokeStyle='rgba(255,255,255,0.9)'; mctx.lineWidth=1.5; mctx.fillRect(r.x,r.y,r.w,r.h); mctx.strokeRect(r.x,r.y,r.w,r.h); mctx.restore();
+        const valid = maskInsideAnyFocus(r);
+        mctx.save();
+        mctx.fillStyle = valid ? 'rgba(255,255,255,0.25)' : 'rgba(255,64,64,0.25)';
+        mctx.strokeStyle = valid ? 'rgba(255,255,255,0.9)' : 'rgba(255,64,64,0.9)';
+        mctx.lineWidth=1.5; mctx.fillRect(r.x,r.y,r.w,r.h); mctx.strokeRect(r.x,r.y,r.w,r.h);
+        mctx.restore();
       } else if(moving && selectedIndex!==-1){
-  const r = masks[selectedIndex]; r.x = x - moveOffset.x; r.y = y - moveOffset.y; drawMasks();
+        const r = masks[selectedIndex];
+        const prevX = r.x, prevY = r.y;
+        r.x = x - moveOffset.x; r.y = y - moveOffset.y;
+        if(focusRects.length && !maskInsideAnyFocus(r)){
+          // revenir à l'ancienne position si sortie de toute zone focus
+          r.x = prevX; r.y = prevY;
+          const now = Date.now();
+          if(now - lastMaskInvalidWarn > 800){
+            showWarn('⚠️ Le masque doit rester à l’intérieur d’une zone focus.');
+            lastMaskInvalidWarn = now;
+          }
+        }
+        drawMasks();
       }
     });
     const finish = (e)=>{
@@ -604,7 +702,34 @@
       const rect = maskCanvas.getBoundingClientRect();
       const x = Math.round((e.clientX-rect.left) * (canvas.width/rect.width));
       const y = Math.round((e.clientY-rect.top) * (canvas.height/rect.height));
-  if(drawing && start){ const r = { x: Math.min(start.x,x), y: Math.min(start.y,y), w: Math.abs(x-start.x), h: Math.abs(y-start.y) }; if(r.w>2 && r.h>2){ masks.push(r); saveMasks(); } start=null; drawMasks(); updateButtons(); }
+      if(resizingMask){
+        const r = masks[resizeMaskIndex];
+        // validation focus (sinon revert)
+        if(focusRects.length && !maskInsideAnyFocus(r)){
+          // revert
+          masks[resizeMaskIndex] = {...originalMaskRect};
+          showWarn('⚠️ Redimensionnement invalide (doit rester dans une zone focus).');
+        } else {
+          saveMasks();
+        }
+        resizingMask=false; resizeMaskIndex=-1; resizeMaskHandle=null; originalMaskRect=null; resizeMaskStart=null;
+        drawMasks(); updateButtons();
+        return;
+      }
+  if(drawing && start){
+        const r = { x: Math.min(start.x,x), y: Math.min(start.y,y), w: Math.abs(x-start.x), h: Math.abs(y-start.y) };
+        if(r.w>2 && r.h>2){
+          if(maskInsideAnyFocus(r)){
+    masks.push(r); saveMasks();
+    // Auto-quit drawing mode after un masque
+    drawing = false; maskCanvas.classList.remove('drawing');
+    if(maskToggle) maskToggle.textContent='Ignorer une zone';
+          } else {
+            showWarn('⚠️ Zone ignorée invalide : elle doit être entièrement dans une zone focus.');
+          }
+        }
+    start=null; drawMasks(); updateButtons();
+      }
   if(moving){ moving=false; maskCanvas.classList.remove('moving'); saveMasks(); }
     };
     maskCanvas.addEventListener('mouseup', finish);
@@ -613,22 +738,78 @@
 
   // Focus zone interactions (reuse maskCanvas events without interfering with masks when focusDrawing)
   if(maskCanvas && focusZoneToggle){
+    function addFocusRect(r){
+      if(r.w>4 && r.h>4){
+        focusRects.push(r); saveFocusRects(); focusZoneClear && focusZoneClear.classList.remove('blocked');
+        // purge masques hors focus si nécessaire
+        if(masks.length){
+          const before = masks.length;
+          for(let i=masks.length-1;i>=0;i--){
+            const m = masks[i];
+            const inside = focusRects.some(f=> m.x>=f.x && m.y>=f.y && (m.x+m.w)<=f.x+f.w && (m.y+m.h)<=f.y+f.h);
+            if(!inside) masks.splice(i,1);
+          }
+          if(masks.length!==before){ purgeNote=' | Masques hors focus supprimés'; if(!hasDiff){ showWarn('⚠️ Masques hors focus supprimés.'); } saveMasks(); }
+        }
+        if(hasDiff) executeDiff();
+      }
+    }
     focusZoneToggle.addEventListener('click', ()=>{
       if(!(hasDiff && hasDiffPixels)) { showWarn('⚠️ Lancez un diff avec différences avant de définir une zone de focus.'); return; }
       focusDrawing = !focusDrawing; focusStart = null;
       focusZoneToggle.textContent = focusDrawing ? 'Tracer zones…' : 'Zones focus';
-      if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); drawFocusRects(); }
+  if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); drawFocusRects(); }
     });
     if(focusZoneClear){
       focusZoneClear.addEventListener('click', ()=>{
         if(!focusRects.length){ showWarn('⚠️ Aucune zone de focus à effacer.'); return; }
         focusRects.length = 0;
-        if(hasDiff) executeDiff(); else if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); }
+  if(hasDiff) executeDiff(); else if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); }
         updateButtons();
       });
     }
     // Integrate with existing mouse handlers by augmenting them (already above): add overlay previews
+    let altFocusStart=null; // pour Alt+drag
+    let resizingFocus = false; let resizeTargetIndex=-1; let resizeHandle=null; let resizeStartPt=null; let originalRect=null;
+    function hitFocusHandle(px,py){
+      const handleSize=6; const half=handleSize/2;
+      for(let i=focusRects.length-1;i>=0;i--){
+        const fr=focusRects[i];
+        const points=[
+          {k:'nw', x:fr.x, y:fr.y}, {k:'ne', x:fr.x+fr.w, y:fr.y},
+          {k:'sw', x:fr.x, y:fr.y+fr.h}, {k:'se', x:fr.x+fr.w, y:fr.y+fr.h},
+          {k:'n', x:fr.x+fr.w/2, y:fr.y}, {k:'s', x:fr.x+fr.w/2, y:fr.y+fr.h},
+          {k:'w', x:fr.x, y:fr.y+fr.h/2}, {k:'e', x:fr.x+fr.w, y:fr.y+fr.h/2}
+        ];
+        for(const p of points){
+          if(px>=p.x-half && px<=p.x+half && py>=p.y-half && py<=p.y+half){ return {index:i, handle:p.k}; }
+        }
+      }
+      return null;
+    }
     maskCanvas.addEventListener('mousedown', e=>{
+      if(e.altKey && (hasDiff && hasDiffPixels)){
+        // Démarrer un tracé focus rapide (comme masque) sans activer focusDrawing global
+        const rect = maskCanvas.getBoundingClientRect();
+        const x = Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
+        const y = Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
+        altFocusStart = {x,y};
+        return;
+      }
+      // Détection des poignées de redimensionnement (si pas en mode dessin focus)
+      if(!focusDrawing && focusRects.length){
+        const rect = maskCanvas.getBoundingClientRect();
+        const x = Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
+        const y = Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
+        const hit = hitFocusHandle(x,y);
+        if(hit){
+          resizingFocus=true; resizeTargetIndex=hit.index; resizeHandle=hit.handle; resizeStartPt={x,y};
+          const fr = focusRects[resizeTargetIndex];
+          originalRect={x:fr.x,y:fr.y,w:fr.w,h:fr.h};
+          e.preventDefault();
+          return;
+        }
+      }
       if(!focusDrawing){
         // allow deletion of a focus rect with meta/ctrl click when not drawing
         if((e.metaKey||e.ctrlKey) && focusRects.length){
@@ -636,7 +817,7 @@
           const x = Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
           const y = Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
           const idx = focusRects.findIndex(r=> x>=r.x && y>=r.y && x<r.x+r.w && y<r.y+r.h);
-          if(idx!==-1){ focusRects.splice(idx,1); if(hasDiff) executeDiff(); if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); drawFocusRects(); } updateButtons(); }
+          if(idx!==-1){ focusRects.splice(idx,1); saveFocusRects(); if(hasDiff) executeDiff(); if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); } updateButtons(); }
         }
         return;
       }
@@ -646,24 +827,90 @@
       focusStart = {x,y};
     });
     maskCanvas.addEventListener('mousemove', e=>{
+      if(resizingFocus && resizeTargetIndex!==-1){
+        const rect = maskCanvas.getBoundingClientRect();
+        const x = Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
+        const y = Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
+        const fr = focusRects[resizeTargetIndex];
+        // Reset to original then apply delta, ensures stable behaviour
+        fr.x = originalRect.x; fr.y = originalRect.y; fr.w = originalRect.w; fr.h = originalRect.h;
+        const dx = x - resizeStartPt.x; const dy = y - resizeStartPt.y;
+        function applyEdge(edge){
+          switch(edge){
+            case 'n': fr.y = originalRect.y + dy; fr.h = originalRect.h - dy; break;
+            case 's': fr.h = originalRect.h + dy; break;
+            case 'w': fr.x = originalRect.x + dx; fr.w = originalRect.w - dx; break;
+            case 'e': fr.w = originalRect.w + dx; break;
+          }
+        }
+        // Corner handles combine edges
+        if(resizeHandle.length===2){
+          applyEdge(resizeHandle[0]); applyEdge(resizeHandle[1]);
+        } else { applyEdge(resizeHandle); }
+        // Contraintes minimum
+        if(fr.w<5){ if(resizeHandle.includes('w')){ fr.x = (originalRect.x+originalRect.w)-5; } fr.w=5; }
+        if(fr.h<5){ if(resizeHandle.includes('n')){ fr.y = (originalRect.y+originalRect.h)-5; } fr.h=5; }
+        // Empêcher positions négatives
+        if(fr.x<0){ fr.w -= (0-fr.x); fr.x=0; }
+        if(fr.y<0){ fr.h -= (0-fr.y); fr.y=0; }
+        // Limiter à canvas
+        if(fr.x+fr.w>canvas.width){ fr.w = canvas.width - fr.x; }
+        if(fr.y+fr.h>canvas.height){ fr.h = canvas.height - fr.y; }
+        drawMasks();
+        return;
+      }
+      if(altFocusStart){
+        const rect = maskCanvas.getBoundingClientRect();
+        const x = Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
+        const y = Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
+        const r = { x: Math.min(altFocusStart.x,x), y: Math.min(altFocusStart.y,y), w: Math.abs(x-altFocusStart.x), h: Math.abs(y-altFocusStart.y) };
+        if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); mctx.save(); mctx.setLineDash([6,4]); mctx.strokeStyle='rgba(0,135,62,0.85)'; mctx.lineWidth=2; mctx.strokeRect(r.x+0.5,r.y+0.5,r.w-1,r.h-1); mctx.restore(); }
+        return;
+      }
       if(!focusDrawing || !focusStart) return;
       const rect = maskCanvas.getBoundingClientRect();
       const x = Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
       const y = Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
       const r = { x: Math.min(focusStart.x,x), y: Math.min(focusStart.y,y), w: Math.abs(x-focusStart.x), h: Math.abs(y-focusStart.y) };
       // Redraw masks + preview rectangle
-      if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); drawFocusRects(); mctx.save(); mctx.strokeStyle='rgba(0,135,62,0.95)'; mctx.setLineDash([6,4]); mctx.lineWidth=2; mctx.strokeRect(r.x+0.5,r.y+0.5,r.w-1,r.h-1); mctx.restore(); }
+  if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); /* drawFocusRects deprecated replaced by animated in drawMasks */ }
     });
     const finishFocus = e=>{
+      if(resizingFocus){
+        resizingFocus=false;
+        // purge masques après redimensionnement si besoin
+        if(masks.length){
+          const before=masks.length;
+          for(let i=masks.length-1;i>=0;i--){
+            const m=masks[i];
+            const inside = focusRects.some(f=> m.x>=f.x && m.y>=f.y && (m.x+m.w)<=f.x+f.w && (m.y+m.h)<=f.y+f.h);
+            if(!inside) masks.splice(i,1);
+          }
+          if(masks.length!==before){ purgeNote=' | Masques hors focus supprimés'; if(!hasDiff){ showWarn('⚠️ Masques hors focus supprimés.'); } saveMasks(); }
+        }
+        if(hasDiff) executeDiff();
+        updateButtons();
+        return;
+      }
+      if(altFocusStart){
+        const rect = maskCanvas.getBoundingClientRect();
+        const x = Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
+        const y = Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
+        const r = { x: Math.min(altFocusStart.x,x), y: Math.min(altFocusStart.y,y), w: Math.abs(x-altFocusStart.x), h: Math.abs(y-altFocusStart.y) };
+        altFocusStart=null;
+        addFocusRect(r);
+        if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); }
+        updateButtons();
+        return;
+      }
       if(!focusDrawing || !focusStart) return;
       const rect = maskCanvas.getBoundingClientRect();
       const x = Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
       const y = Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
       const r = { x: Math.min(focusStart.x,x), y: Math.min(focusStart.y,y), w: Math.abs(x-focusStart.x), h: Math.abs(y-focusStart.y) };
-      if(r.w>4 && r.h>4){ focusRects.push(r); focusZoneClear && focusZoneClear.classList.remove('blocked'); }
-      focusStart=null; // keep drawing mode active to allow adding multiple zones
-      if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); drawFocusRects(); }
-      if(hasDiff) executeDiff();
+      if(r.w>4 && r.h>4){ addFocusRect(r); focusDrawing = false; focusZoneToggle && (focusZoneToggle.textContent='Zones focus'); }
+      focusStart=null;
+      if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); }
       updateButtons();
     };
     maskCanvas.addEventListener('mouseup', finishFocus);
@@ -671,17 +918,7 @@
   }
 
   // Draw existing focus rectangles overlay (outlines only)
-  function drawFocusRects(){
-    if(!mctx || !focusRects.length) return;
-    mctx.save();
-    focusRects.forEach(r=>{
-      mctx.strokeStyle='rgba(0,135,62,0.95)';
-      mctx.setLineDash([6,4]);
-      mctx.lineWidth=2;
-      mctx.strokeRect(r.x+0.5,r.y+0.5,r.w-1,r.h-1);
-    });
-    mctx.restore();
-  }
+  // drawFocusRects supprimé (intégré dans drawMasks animé)
 
   // init canvas
   setCanvasSize(800, 400);
