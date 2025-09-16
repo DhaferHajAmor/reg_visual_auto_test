@@ -69,6 +69,12 @@
   setBlocked(resetPrefsBtn, false);
   setBlocked(detectShiftBtn, !bothLoaded);
   setBlocked(resetShiftBtn, !globalShift.active);
+    // Disable vertical tolerance UI when a global shift is active to avoid double compensation
+    if(verticalTolInput){
+      verticalTolInput.disabled = !!globalShift.active;
+      if(globalShift.active){ verticalTolInput.title='Désactivée car un décalage global est appliqué'; }
+      else { verticalTolInput.title='Tolère un léger décalage vertical (px)'; }
+    }
   }
   updateButtons();
 
