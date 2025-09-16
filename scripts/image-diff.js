@@ -576,6 +576,7 @@
   // Mask UI wiring
   // (maskToggle, maskClear already defined above)
   if(maskCanvas && maskToggle){
+    maskToggle.setAttribute('aria-pressed','false');
     maskToggle.addEventListener('click', ()=>{
       if(!(hasDiff && hasDiffPixels)){
         showWarn('⚠️ Les zones ignorées ne sont disponibles que si un diff avec des différences est affiché.');
@@ -585,6 +586,7 @@
       maskCanvas.classList.toggle('drawing', drawing);
       maskCanvas.classList.remove('moving');
       maskToggle.textContent = drawing ? 'Terminer zones ignorées' : 'Ignorer une zone';
+      maskToggle.setAttribute('aria-pressed', drawing ? 'true':'false');
       drawMasks();
   updateButtons();
     });
@@ -754,10 +756,12 @@
         if(hasDiff) executeDiff();
       }
     }
+    focusZoneToggle.setAttribute('aria-pressed','false');
     focusZoneToggle.addEventListener('click', ()=>{
       if(!(hasDiff && hasDiffPixels)) { showWarn('⚠️ Lancez un diff avec différences avant de définir une zone de focus.'); return; }
       focusDrawing = !focusDrawing; focusStart = null;
       focusZoneToggle.textContent = focusDrawing ? 'Tracer zones…' : 'Zones focus';
+      focusZoneToggle.setAttribute('aria-pressed', focusDrawing ? 'true':'false');
   if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); drawFocusRects(); }
     });
     if(focusZoneClear){
@@ -908,7 +912,7 @@
       const x = Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
       const y = Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
       const r = { x: Math.min(focusStart.x,x), y: Math.min(focusStart.y,y), w: Math.abs(x-focusStart.x), h: Math.abs(y-focusStart.y) };
-      if(r.w>4 && r.h>4){ addFocusRect(r); focusDrawing = false; focusZoneToggle && (focusZoneToggle.textContent='Zones focus'); }
+  if(r.w>4 && r.h>4){ addFocusRect(r); focusDrawing = false; if(focusZoneToggle){ focusZoneToggle.textContent='Zones focus'; focusZoneToggle.setAttribute('aria-pressed','false'); } }
       focusStart=null;
       if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); }
       updateButtons();

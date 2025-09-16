@@ -36,6 +36,10 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-ap
 .cta-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .btn{background:var(--btn-bg);border:1px solid var(--btn-border);color:var(--btn-fg);padding:10px 14px;border-radius:10px;cursor:pointer}
 .btn.secondary{background:var(--btn-bg-secondary);border-color:var(--btn-border-secondary);color:var(--btn-fg-secondary)}
+.btn.secondary[aria-pressed="true"]{
+  background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.15) inset,0 0 0 1px rgba(255,255,255,.15);
+}
+.btn.secondary[aria-pressed="true"]::after{content:'●';font-size:10px;margin-left:6px;display:inline-block;vertical-align:middle;opacity:.9}
 .btn:active{transform:translateY(1px)}
 .btn:focus{outline:2px solid var(--accent); outline-offset:2px}
 .tab:focus{outline:2px solid var(--accent); outline-offset:2px}
