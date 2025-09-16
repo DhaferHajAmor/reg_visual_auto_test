@@ -63,8 +63,10 @@ Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
 - A (design) + B (capture) : déposer / choisir.
 - Mode : Pixel (rapide) ou SSIM (structure perceptuelle).
 - Seuil : sensibilité (affiché %).
-- Options : Luminance seule, Lisser (1 px), Tolérance bords (AA).
- - Options : Luminance seule, Lisser (1 px), Tolérance bords (AA), Tolérance verticale (px) pour absorber un léger shift vertical.
+- Options : Luminance seule, Lisser (1 px), Tolérance bords (AA), Tolérance verticale (px).
+	- Tolérance verticale : avant de compter une différence, si le pixel diffère on recherche une correspondance acceptable jusqu'à ±N lignes (même colonne). Si trouvée, le pixel est considéré identique (réduit les faux positifs dus à un léger glissement vertical).
+	- 0 = désactivé (strict). 1–10 = absorption de petits décalages (limite volontaire pour ne pas masquer de vrais changements ni ralentir la comparaison).
+	- N'affecte que le mode Pixel (SSIM gère déjà des fenêtres locales).
 - Masques exclus : dessiner rectangles à ignorer (multi‑zones). 
  La comparaison ignore toujours les zones hors chevauchement. Si les tailles diffèrent, un badge « Tailles des images différentes (A WxH / B WxH) » apparaît (avec dimensions brutes) et une mention dans le statut indique que seule la zone commune est évaluée.
  - Zones de focus (mode composant étendu) : bouton « Zones focus » pour entrer en mode ajout ; tracer une ou plusieurs zones d’intérêt (chaque relâche de souris ajoute une zone). Le diff est limité à l’union de ces zones, le reste est estompé. Meta/Ctrl+clic sur une zone pour la retirer. « Effacer focus » supprime toutes les zones et revient au mode global.
