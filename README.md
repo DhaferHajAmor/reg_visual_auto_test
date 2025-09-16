@@ -66,7 +66,7 @@ Pas d’installation. Pas de build côté serveur. Aucune donnée envoyée.
 - Options : Luminance seule, Lisser (1 px), Tolérance bords (AA).
 - Masques exclus : dessiner rectangles à ignorer (multi‑zones). 
  La comparaison ignore toujours les zones hors chevauchement. Si les tailles diffèrent, un badge « Tailles des images différentes (A WxH / B WxH) » apparaît (avec dimensions brutes) et une mention dans le statut indique que seule la zone commune est évaluée.
- - Zone de focus (mode composant) : bouton « Zone de focus » pour tracer un rectangle d’intérêt ; le diff est limité à cette zone, le reste est estompé. « Effacer focus » pour revenir au mode global.
+ - Zones de focus (mode composant étendu) : bouton « Zones focus » pour entrer en mode ajout ; tracer une ou plusieurs zones d’intérêt (chaque relâche de souris ajoute une zone). Le diff est limité à l’union de ces zones, le reste est estompé. Meta/Ctrl+clic sur une zone pour la retirer. « Effacer focus » supprime toutes les zones et revient au mode global.
 - Inverser / Effacer / Télécharger diff / Réinitialiser préférences.
 
 ##  Persistance

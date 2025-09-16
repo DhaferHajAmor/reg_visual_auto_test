@@ -32,9 +32,9 @@
   let hasDiff = false; // diff executed at least once
   let hasDiffPixels = false; // any differing pixels
   let running = false; // diff execution state
-   // Focus zone state (single active rectangle limiting comparison / display)
-   let focusRect = null; // {x,y,w,h}
-   let focusDrawing = false; let focusStart = null;
+   // Focus zones state (multiple active rectangles limiting comparison / display)
+   let focusRects = []; // array of {x,y,w,h}
+   let focusDrawing = false; let focusStart = null; // current drawing start
   function showWarn(msg){
     if(diffStatus){ diffStatus.textContent=msg; diffStatus.style.display='block'; diffStatus.style.color='#b26b00'; }
     else { alert(msg.replace(/^⚠️\s*/,'')); }
@@ -56,7 +56,7 @@
   setBlocked(maskToggle, false);
   setBlocked(maskClear, false);
   setBlocked(focusZoneToggle, false);
-  setBlocked(focusZoneClear, !focusRect);
+  setBlocked(focusZoneClear, !(focusRects && focusRects.length));
   setBlocked(downloadBtn, false);
   // Reset preferences must always remain active regardless of state
   setBlocked(resetPrefsBtn, false);
@@ -79,8 +79,17 @@
     canvas.width = w; canvas.height = h;
     if(maskCanvas){ maskCanvas.width = w; maskCanvas.height = h; }
     if(w!==lastW || h!==lastH){ restoreMasksForSize(w,h); lastW=w; lastH=h; }
-    if(focusRect && (focusRect.x+focusRect.w>canvas.width || focusRect.y+focusRect.h>canvas.height)){
-      focusRect = null; updateButtons();
+    if(focusRects && focusRects.length){
+      const before = focusRects.length;
+      // Remove any focus rect falling outside new bounds
+      for(let i=focusRects.length-1;i>=0;i--){
+        const r = focusRects[i];
+        if(r.x>=w || r.y>=h){ focusRects.splice(i,1); continue; }
+        if(r.x + r.w > w) r.w = w - r.x;
+        if(r.y + r.h > h) r.h = h - r.y;
+        if(r.w<=0 || r.h<=0) focusRects.splice(i,1);
+      }
+      if(before !== focusRects.length) updateButtons();
     }
   }
 
@@ -157,13 +166,16 @@
     const t = mode==='pixel' ? Math.round((tPct/100) * 255) : 1 - (tPct/100); // SSIM threshold
     const color = hexToRgb(diffColorInput.value || '#ff0055');
 
-    let diffCount = 0;
+  let diffCount = 0;
+  let focusPixelsTotal = 0; // union pixel count of all focus rects (exact, counted during loops)
     if(mode==='pixel'){
       for(let i=0; i<dA.data.length; i+=4){
         const px = (i/4) % targetW; const py = Math.floor((i/4)/targetW);
-        if(focusRect && !(px>=focusRect.x && py>=focusRect.y && px<focusRect.x+focusRect.w && py<focusRect.y+focusRect.h)){
+        const insideFocus = !focusRects.length || focusRects.some(r => px>=r.x && py>=r.y && px<r.x+r.w && py<r.y+r.h);
+        if(focusRects.length && !insideFocus){
           out.data[i]=dB.data[i]*0.15; out.data[i+1]=dB.data[i+1]*0.15; out.data[i+2]=dB.data[i+2]*0.15; out.data[i+3]=255; continue;
         }
+        if(insideFocus) focusPixelsTotal++;
         if(masks.length && masks.some(r=>pointInRect(px,py,r))){
           out.data[i] = dB.data[i] * 0.6; out.data[i+1] = dB.data[i+1] * 0.6; out.data[i+2] = dB.data[i+2] * 0.6; out.data[i+3] = 255; continue;
         }
@@ -203,8 +215,10 @@
       const C1 = 6.5025, C2 = 58.5225;
       function ssimAt(x,y){ let muA=0, muB=0, n=0; for(let dy=-half; dy<=half; dy++) for(let dx=-half; dx<=half; dx++){ const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=targetW||ny>=targetH) continue; muA+=YA[ny*targetW+nx]; muB+=YB[ny*targetW+nx]; n++; } muA/=n; muB/=n; let varA=0,varB=0,cov=0; for(let dy=-half; dy<=half; dy++) for(let dx=-half; dx<=half; dx++){ const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=targetW||ny>=targetH) continue; const a=YA[ny*targetW+nx]-muA; const b=YB[ny*targetW+nx]-muB; varA+=a*a; varB+=b*b; cov+=a*b; } varA/=(n-1); varB/=(n-1); cov/=(n-1); const num=(2*muA*muB + C1) * (2*cov + C2); const den=(muA*muA + muB*muB + C1) * (varA + varB + C2); return den!==0 ? (num/den) : 1; }
       for(let y=0;y<targetH;y++) for(let x=0;x<targetW;x++){ const idx=(y*targetW+x)*4; 
-        if(focusRect && !(x>=focusRect.x && y>=focusRect.y && x<focusRect.x+focusRect.w && y<focusRect.y+focusRect.h)){
+        const insideFocus = !focusRects.length || focusRects.some(r => x>=r.x && y>=r.y && x<r.x+r.w && y<r.y+r.h);
+        if(focusRects.length && !insideFocus){
           out.data[idx]=dB.data[idx]*0.15; out.data[idx+1]=dB.data[idx+1]*0.15; out.data[idx+2]=dB.data[idx+2]*0.15; out.data[idx+3]=255; continue; }
+        if(insideFocus) focusPixelsTotal++;
         if(masks.length && masks.some(r=>pointInRect(x,y,r))){ out.data[idx]=dB.data[idx]*0.6; out.data[idx+1]=dB.data[idx+1]*0.6; out.data[idx+2]=dB.data[idx+2]*0.6; out.data[idx+3]=255; continue; }
         const s = ssimAt(x,y); if(s < t){ diffCount++; out.data[idx]=color.r; out.data[idx+1]=color.g; out.data[idx+2]=color.b; out.data[idx+3]=255; } else { out.data[idx]=dB.data[idx]*0.6; out.data[idx+1]=dB.data[idx+1]*0.6; out.data[idx+2]=dB.data[idx+2]*0.6; out.data[idx+3]=255; } }
     }
@@ -212,7 +226,7 @@
     if(diffStatus){
       diffStatus.style.display='block'; diffStatus.style.textAlign='center'; diffStatus.style.fontWeight='600';
   let total=(out.width||targetW)*(out.height||targetH);
-  if(focusRect){ total = focusRect.w * focusRect.h; }
+  if(focusRects.length){ total = focusPixelsTotal || 1; }
       const sizeDiff = (aW!==bW || aH!==bH);
       if(sizeIgnoredBadge){
         if(sizeDiff){
@@ -225,11 +239,16 @@
       }
       if(diffCount===0){
         const base = sizeDiff ? 'Aucune différence (zone commune). Tailles des images différentes.' : 'Aucune différence.';
-        diffStatus.textContent = focusRect ? base + ' | Zone focus active' : base;
+        if(focusRects.length===1){ diffStatus.textContent = base + ' | Zone focus active'; }
+        else if(focusRects.length>1){ diffStatus.textContent = base + ` | Zones focus actives: ${focusRects.length}`; }
+        else { diffStatus.textContent = base; }
         diffStatus.style.color = sizeDiff ? '#b26b00' : '#0b6e32';
       } else {
         const pct=Math.min(100, ((diffCount/total)*100).toFixed(3));
-        diffStatus.textContent = `${diffCount.toLocaleString()} pixels différents (~${pct}%)` + (sizeDiff ? ' | Tailles des images différentes' : '') + (focusRect ? ' | Zone focus active' : '');
+        let focusInfo = '';
+        if(focusRects.length===1) focusInfo = ' | Zone focus active';
+        else if(focusRects.length>1) focusInfo = ` | Zones focus actives: ${focusRects.length}`;
+        diffStatus.textContent = `${diffCount.toLocaleString()} pixels différents (~${pct}%)` + (sizeDiff ? ' | Tailles des images différentes' : '') + focusInfo;
         diffStatus.style.color = '#b00020';
       }
     }
@@ -374,6 +393,7 @@
   updateButtons();
     });
     maskCanvas.addEventListener('mousedown', (e)=>{
+      if(focusDrawing) return; // ignore mask interactions while drawing focus zones
       const rect = maskCanvas.getBoundingClientRect();
       const px = Math.round((e.clientX-rect.left) * (canvas.width/rect.width));
       const py = Math.round((e.clientY-rect.top) * (canvas.height/rect.height));
@@ -391,6 +411,7 @@
       }
     });
     maskCanvas.addEventListener('mousemove', (e)=>{
+      if(focusDrawing) return; // do not move masks while drawing focus zones
       const rect = maskCanvas.getBoundingClientRect();
       const x = Math.round((e.clientX-rect.left) * (canvas.width/rect.width));
       const y = Math.round((e.clientY-rect.top) * (canvas.height/rect.height));
@@ -403,6 +424,7 @@
       }
     });
     const finish = (e)=>{
+      if(focusDrawing) return; // ignore mask finish while drawing focus zones
       const rect = maskCanvas.getBoundingClientRect();
       const x = Math.round((e.clientX-rect.left) * (canvas.width/rect.width));
       const y = Math.round((e.clientY-rect.top) * (canvas.height/rect.height));
@@ -418,23 +440,30 @@
     focusZoneToggle.addEventListener('click', ()=>{
       if(!(hasDiff && hasDiffPixels)) { showWarn('⚠️ Lancez un diff avec différences avant de définir une zone de focus.'); return; }
       focusDrawing = !focusDrawing; focusStart = null;
-      focusZoneToggle.textContent = focusDrawing ? 'Tracer zone…' : 'Zone de focus';
-      if(focusDrawing){
-        // Clear temporary overlay
-        if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); }
-      }
+      focusZoneToggle.textContent = focusDrawing ? 'Tracer zones…' : 'Zones focus';
+      if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); drawFocusRects(); }
     });
     if(focusZoneClear){
       focusZoneClear.addEventListener('click', ()=>{
-        if(!focusRect) return;
-        focusRect = null; focusZoneClear.classList.add('blocked');
+        if(!focusRects.length) return;
+        focusRects.length = 0; focusZoneClear.classList.add('blocked');
         if(hasDiff) executeDiff(); else if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); }
         updateButtons();
       });
     }
     // Integrate with existing mouse handlers by augmenting them (already above): add overlay previews
     maskCanvas.addEventListener('mousedown', e=>{
-      if(!focusDrawing) return;
+      if(!focusDrawing){
+        // allow deletion of a focus rect with meta/ctrl click when not drawing
+        if((e.metaKey||e.ctrlKey) && focusRects.length){
+          const rect = maskCanvas.getBoundingClientRect();
+          const x = Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
+          const y = Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
+          const idx = focusRects.findIndex(r=> x>=r.x && y>=r.y && x<r.x+r.w && y<r.y+r.h);
+          if(idx!==-1){ focusRects.splice(idx,1); if(hasDiff) executeDiff(); if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); drawFocusRects(); } updateButtons(); }
+        }
+        return;
+      }
       const rect = maskCanvas.getBoundingClientRect();
       const x = Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
       const y = Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
@@ -447,7 +476,7 @@
       const y = Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
       const r = { x: Math.min(focusStart.x,x), y: Math.min(focusStart.y,y), w: Math.abs(x-focusStart.x), h: Math.abs(y-focusStart.y) };
       // Redraw masks + preview rectangle
-      if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); mctx.save(); mctx.strokeStyle='rgba(0,135,62,0.95)'; mctx.setLineDash([6,4]); mctx.lineWidth=2; mctx.strokeRect(r.x+0.5,r.y+0.5,r.w-1,r.h-1); mctx.restore(); }
+      if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); drawFocusRects(); mctx.save(); mctx.strokeStyle='rgba(0,135,62,0.95)'; mctx.setLineDash([6,4]); mctx.lineWidth=2; mctx.strokeRect(r.x+0.5,r.y+0.5,r.w-1,r.h-1); mctx.restore(); }
     });
     const finishFocus = e=>{
       if(!focusDrawing || !focusStart) return;
@@ -455,13 +484,27 @@
       const x = Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
       const y = Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
       const r = { x: Math.min(focusStart.x,x), y: Math.min(focusStart.y,y), w: Math.abs(x-focusStart.x), h: Math.abs(y-focusStart.y) };
-      if(r.w>4 && r.h>4){ focusRect = r; focusZoneClear && focusZoneClear.classList.remove('blocked'); }
-      focusStart=null; focusDrawing=false; focusZoneToggle.textContent='Zone de focus';
-      if(hasDiff) executeDiff(); else if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); }
+      if(r.w>4 && r.h>4){ focusRects.push(r); focusZoneClear && focusZoneClear.classList.remove('blocked'); }
+      focusStart=null; // keep drawing mode active to allow adding multiple zones
+      if(mctx){ mctx.clearRect(0,0,maskCanvas.width,maskCanvas.height); drawMasks(); drawFocusRects(); }
+      if(hasDiff) executeDiff();
       updateButtons();
     };
     maskCanvas.addEventListener('mouseup', finishFocus);
     maskCanvas.addEventListener('mouseleave', finishFocus);
+  }
+
+  // Draw existing focus rectangles overlay (outlines only)
+  function drawFocusRects(){
+    if(!mctx || !focusRects.length) return;
+    mctx.save();
+    focusRects.forEach(r=>{
+      mctx.strokeStyle='rgba(0,135,62,0.95)';
+      mctx.setLineDash([6,4]);
+      mctx.lineWidth=2;
+      mctx.strokeRect(r.x+0.5,r.y+0.5,r.w-1,r.h-1);
+    });
+    mctx.restore();
   }
 
   // init canvas
