@@ -67,8 +67,9 @@
   setBlocked(downloadBtn, false);
   // Reset preferences must always remain active regardless of state
   setBlocked(resetPrefsBtn, false);
-  setBlocked(detectShiftBtn, !bothLoaded);
-  setBlocked(resetShiftBtn, !globalShift.active);
+  // Always active: detect / reset shift now rely on informative messages
+  setBlocked(detectShiftBtn, false);
+  setBlocked(resetShiftBtn, false);
     // Disable vertical tolerance UI when a global shift is active to avoid double compensation
     if(verticalTolInput){
       verticalTolInput.disabled = !!globalShift.active;
@@ -390,10 +391,14 @@
   }
 
   detectShiftBtn && detectShiftBtn.addEventListener('click', ()=>{
+    if(!(state.A && state.B)){
+      showWarn('⚠️ Charger d\'abord deux images pour détecter un décalage.');
+      return;
+    }
     detectGlobalShift();
   });
   resetShiftBtn && resetShiftBtn.addEventListener('click', ()=>{
-    if(!globalShift.active){ showWarn('⚠️ Aucun décalage actif.'); return; }
+    if(!globalShift.active){ showWarn('⚠️ Aucun décalage actif à réinitialiser.'); return; }
     globalShift = {dx:0, dy:0, active:false};
     if(shiftInfo){ shiftInfo.style.display='none'; }
     if(diffStatus){ diffStatus.textContent='Décalage global réinitialisé.'; diffStatus.style.display='block'; diffStatus.style.color='#b26b00'; }
