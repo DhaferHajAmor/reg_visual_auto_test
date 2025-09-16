@@ -23,6 +23,7 @@
   const lumaOnly = document.getElementById('lumaOnly');
   const blur1 = document.getElementById('blur1');
   const edgeTol = document.getElementById('edgeTol');
+  const verticalTolInput = document.getElementById('verticalTol');
   const runBtn = $('#runDiff');
   const swapBtn = $('#swapImages');
   const clearBtn = $('#clearImages');
@@ -202,6 +203,51 @@
           }
         }
         if(maxDiff > t){
+          // Vertical tolerance search (same column) if enabled
+          let vtol = 0;
+          if(verticalTolInput){ vtol = Math.max(0, Math.min(10, parseInt(verticalTolInput.value,10)||0)); }
+          if(vtol>0){
+            let adjusted=false;
+            for(let dy=1; dy<=vtol && !adjusted; dy++){
+              const aboveY = py - dy;
+              if(aboveY>=0){
+                const ai = (aboveY*targetW + px)*4;
+                let diffA;
+                if(lumaOnly && lumaOnly.checked){
+                  const lA2 = 0.2126*dA.data[ai] + 0.7152*dA.data[ai+1] + 0.0722*dA.data[ai+2];
+                  const lB2 = 0.2126*dB.data[i] + 0.7152*dB.data[i+1] + 0.0722*dB.data[i+2];
+                  diffA = Math.abs(lA2 - lB2);
+                } else {
+                  const rA2 = Math.abs(dA.data[ai] - dB.data[i]);
+                  const gA2 = Math.abs(dA.data[ai+1] - dB.data[i+1]);
+                  const bA2 = Math.abs(dA.data[ai+2] - dB.data[i+2]);
+                  const aA2 = Math.abs(dA.data[ai+3] - dB.data[i+3]);
+                  diffA = Math.max(rA2,gA2,bA2,aA2);
+                }
+                if(diffA <= t){ adjusted=true; }
+              }
+              const belowY = py + dy;
+              if(!adjusted && belowY<targetH){
+                const bi = (belowY*targetW + px)*4;
+                let diffB;
+                if(lumaOnly && lumaOnly.checked){
+                  const lA3 = 0.2126*dA.data[bi] + 0.7152*dA.data[bi+1] + 0.0722*dA.data[bi+2];
+                  const lB3 = 0.2126*dB.data[i] + 0.7152*dB.data[i+1] + 0.0722*dB.data[i+2];
+                  diffB = Math.abs(lA3 - lB3);
+                } else {
+                  const rB2 = Math.abs(dA.data[bi] - dB.data[i]);
+                  const gB2 = Math.abs(dA.data[bi+1] - dB.data[i+1]);
+                  const bB2 = Math.abs(dA.data[bi+2] - dB.data[i+2]);
+                  const aB2 = Math.abs(dA.data[bi+3] - dB.data[i+3]);
+                  diffB = Math.max(rB2,gB2,bB2,aB2);
+                }
+                if(diffB <= t){ adjusted=true; }
+              }
+            }
+            if(adjusted){
+              out.data[i] = dB.data[i] * 0.6; out.data[i+1] = dB.data[i+1] * 0.6; out.data[i+2] = dB.data[i+2] * 0.6; out.data[i+3] = 255; continue;
+            }
+          }
           diffCount++;
           out.data[i] = color.r; out.data[i+1] = color.g; out.data[i+2] = color.b; out.data[i+3] = 255;
         } else {
@@ -287,14 +333,15 @@
   }
 
   // Preferences persistence and threshold label + mode label
-  function savePrefs(){ try{ localStorage.setItem(PREF_KEY, JSON.stringify({ threshold: Math.max(0, Math.min(100, parseInt(thresholdInput.value,10)||0)), color: diffColorInput.value||'#ff0055', luma: !!(lumaOnly&&lumaOnly.checked), blur: !!(blur1&&blur1.checked), edge: !!(edgeTol&&edgeTol.checked) })); }catch(_){} }
-  function loadPrefs(){ try{ const v = JSON.parse(localStorage.getItem(PREF_KEY)||'null'); if(!v) return; if(typeof v.threshold==='number'){ thresholdInput.value=String(v.threshold); if(thresholdVal) thresholdVal.textContent=v.threshold+'%'; } if(typeof v.color==='string'){ diffColorInput.value=v.color; } if(lumaOnly) lumaOnly.checked=!!v.luma; if(blur1) blur1.checked=!!v.blur; if(edgeTol) edgeTol.checked=!!v.edge; }catch(_){} }
+  function savePrefs(){ try{ localStorage.setItem(PREF_KEY, JSON.stringify({ threshold: Math.max(0, Math.min(100, parseInt(thresholdInput.value,10)||0)), color: diffColorInput.value||'#ff0055', luma: !!(lumaOnly&&lumaOnly.checked), blur: !!(blur1&&blur1.checked), edge: !!(edgeTol&&edgeTol.checked), vtol: Math.max(0, Math.min(10, parseInt(verticalTolInput && verticalTolInput.value,10)||0)) })); }catch(_){} }
+  function loadPrefs(){ try{ const v = JSON.parse(localStorage.getItem(PREF_KEY)||'null'); if(!v) return; if(typeof v.threshold==='number'){ thresholdInput.value=String(v.threshold); if(thresholdVal) thresholdVal.textContent=v.threshold+'%'; } if(typeof v.color==='string'){ diffColorInput.value=v.color; } if(lumaOnly) lumaOnly.checked=!!v.luma; if(blur1) blur1.checked=!!v.blur; if(edgeTol) edgeTol.checked=!!v.edge; if(verticalTolInput && typeof v.vtol==='number'){ verticalTolInput.value=String(v.vtol); } }catch(_){} }
   loadPrefs();
   if(thresholdVal){ const sync = ()=> { const t = Math.max(0, Math.min(100, parseInt(thresholdInput.value,10)||0)); thresholdVal.textContent = t + '%'; savePrefs(); }; thresholdInput.addEventListener('input', sync); sync(); }
   diffColorInput.addEventListener('change', savePrefs);
   lumaOnly && lumaOnly.addEventListener('change', savePrefs);
   blur1 && blur1.addEventListener('change', savePrefs);
   edgeTol && edgeTol.addEventListener('change', savePrefs);
+  verticalTolInput && verticalTolInput.addEventListener('input', ()=>{ const v = Math.max(0, Math.min(10, parseInt(verticalTolInput.value,10)||0)); verticalTolInput.value=String(v); savePrefs(); });
   if(diffModeSel){ const updateLabel=()=>{ thresholdLabelText && (thresholdLabelText.textContent = diffModeSel.value==='pixel' ? 'Seuil' : 'Seuil SSIM'); }; diffModeSel.addEventListener('change', updateLabel); updateLabel(); }
 
   // Reset preferences button
